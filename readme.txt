@@ -1,5 +1,5 @@
 === IntenseDebate Comments ===
-Contributors: Jon Fox, Crowd Favorite
+Contributors: IntenseDebate, Crowd Favorite
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments
 Requires at least: 2.0
 Tested up to: 2.7
