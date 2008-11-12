@@ -38,3 +38,9 @@ After installing and activating the IntenseDebate plugin you will need to update
 
 **Please Note:**
 Your comments may take several hours to import. The time of your import is dependent on how many other import requests we are receiving in addition to how many comments are currently being imported. 
+
+== Screenshots ==
+
+1. An example of the comment system itself.  Notice all the extra goodies like user profile information, reputation, threaded comments, comment voting, RSS feeds for everything, and more!
+2. This is the enhanced moderation screen.  Note the extra information about the commenter (same drop down menu for each user from the previous screenshot is available here).
+3. The settings page for the IntenseDebate plugin.  There are many ways to customize IntenseDebate to do just as much as you want it to.
