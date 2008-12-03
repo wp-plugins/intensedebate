@@ -3,7 +3,7 @@
 Plugin Name: IntenseDebate
 Plugin URI: http://intensedebate.com/wordpress
 Description: <a href="http://www.intensedebate.com">IntenseDebate Comments</a> enhance and encourage conversation on your blog or website.  Full comment and account data sync between IntenseDebate and WordPress ensures that you will always have your comments.  Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you!  To get started, please activate the plugin and adjust your  <a href="./options-general.php?page=id_settings">IntenseDebate settings</a> .
-Version: 2.0.15
+Version: 2.0.16
 Author: IntenseDebate & Crowd Favorite
 Author URI: http://crowdfavorite.com
 */
@@ -11,7 +11,7 @@ Author URI: http://crowdfavorite.com
 // CONSTANTS
 	
 	//This plugin's version 
-	define('ID_PLUGIN_VERSION', '2.0.15');
+	define('ID_PLUGIN_VERSION', '2.0.16');
 	
 	// api endpoints
 	define('ID_SERVICE', 'http://intensedebate.com/services/v1/operations/postOperations.php');
@@ -165,9 +165,7 @@ if (!function_exists('wp_notify_moderator')) {
 		);
 		$queue = id_get_queue();
 		$op = $queue->add('plugin_deactivated', $fields, 'id_generic_callback');
-		$queue->ping(array($op));
-		
-		id_clear_blog_settings();
+		$queue->ping(array($op));		
 	}
 	register_deactivation_hook( ID_FILE, 'id_deactivate' );
 
@@ -305,20 +303,16 @@ if (!function_exists('wp_notify_moderator')) {
 		
 		$snoopy = get_snoopy();
 		if ($method == "POST") {
-			// dbg('posting:', $fields);
-			// dbg('to:', $url);
-			if ($snoopy->submit($url, $fields) ) {
+			
+			if ($snoopy->submit($url, $fields) ) {			
 				$results = $snoopy->results;
-			}
+			}			
 		} else {
-			$url .= "?".http_parse_query($fields);
-			// dbg('getting from', $url);
-			if ($snoopy->fetch($url)) {
+			$url .= "?".http_parse_query($fields);			
+			if ($snoopy->fetch($url)) {			
 				$results = $snoopy->results;
-			}
+			}			
 		}
-		
-		// dbg('results', $results);
 		return $results;
 	}
 	
@@ -348,10 +342,6 @@ if (!function_exists('wp_notify_moderator')) {
 		}
 	}
 	
-	
-
-
-
 // CRUD OPERATION HOOKS
 
 	function id_save_comment($comment_ID = 0) {
@@ -505,7 +495,10 @@ if (!function_exists('wp_notify_moderator')) {
 		function export($bRemote = true) {
 			$o = array();
 			foreach($this->properties as $local => $remote) {
-				$o[$remote] = $this->$local;
+				if($remote=="comment_text")
+					$o[$remote] = trim($this->$local); //trim the comment text
+				else
+					$o[$remote] = $this->$local;
 			}
 			return $o;
 		}
@@ -755,7 +748,7 @@ if (!function_exists('wp_notify_moderator')) {
 
 		function id_queue() {
 			$this->load();
-			$this->create();
+			//$this->create();
 		}
 
 		function load() {
@@ -796,7 +789,8 @@ if (!function_exists('wp_notify_moderator')) {
 		}
 		
 		function send($operations = null) {
-			if (!$operations) $operations = $this->operations;
+			if (!$operations) $operations = $this->operations;			
+			
 			$jsonservice = id_get_json_service();
 			$fields = array(
 				'appKey' => ID_APPKEY,
@@ -809,20 +803,24 @@ if (!function_exists('wp_notify_moderator')) {
 			if ($snoopy->submit($this->url, $fields)) {
 				return $snoopy->results;
 			}
+			else { 						
+				return false;				
+			}
+			
 			return null;
 		}
 
 		function process($rawResults) {
-
-			// dbg('process', $rawResults);
-			// testing string
-			// $rawResults = $this->testResults();
-
+			
+			//HTTP request failed?  Leave queue alone and attempt to resend later
+			if($rawResults==false)
+			{
+				return;
+			}
+			
 			// Decode results string
 			$jsonservice = id_get_json_service();
 			$results = $jsonservice->decode($rawResults);
-			// dbg('results', $results);
-			// dbg('operations', $this->operations);
 			
 			// flip the array around using operation_id as the key
 			$results = $this->reIndex($results, 'operation_id');
@@ -835,8 +833,6 @@ if (!function_exists('wp_notify_moderator')) {
 				$result = $results[$operation->operation_id];
 				if (isset($result)) { 
 					
-					// dbg('found result in flipped array', $result);
-					// dbg('for this operation...', $operation);
 					$callback = $operation->callback;
 					if (isset($callback) && function_exists($callback)) {
 						// callback returns true == remove from queue
@@ -847,7 +843,7 @@ if (!function_exists('wp_notify_moderator')) {
 						$operation->response = $result->response;
 						
 						if (!$finished) {
-							$newQueue[] = $operation;
+							$newQueue[] = $operation;			
 						}
 					}
 					
@@ -957,6 +953,41 @@ if (!function_exists('wp_notify_moderator')) {
 	}
 	
 
+	function id_REST_get_comments_by_user()
+	{
+		global $wpdb;
+		
+		$email = id_param('id_email');
+		$postid = id_param('id_postid');
+		
+		if(strlen($email)>0)
+			$emailStr = "c.comment_author_email = '$email'";
+		else 
+			$emailStr = "true";
+			
+		if(strlen($postid)>0)
+			$postStr = "c.comment_post_ID = '$postid'";
+		else 
+			$postStr = "true";
+			
+		if($postStr == 'true' && $emailStr== 'true' )
+		{
+			id_request_message("Invalid params $postid $postStr $email $emailStr");
+			return array();
+		}
+			
+		$sql = "select * from {$wpdb->comments} c where $emailStr and $postStr order by c.comment_ID DESC limit 0, 30";		
+		$results = $wpdb->get_results($sql);
+		
+		if (!count($results)) {
+			id_request_message('No comments');
+			return array();
+		}
+		
+		$comments = array_map("id_export_comment", $results);
+		return $comments;
+	}
+	
 // ACTION: import
 // Gets comments by post_id, includes paging parameters
 // Used to populate ID database right after registration
@@ -985,10 +1016,10 @@ if (!function_exists('wp_notify_moderator')) {
 			return array();
 		}
 
-		$sql = "select count(comment_ID) from {$wpdb->comments} c where c.comment_ID >= ($min_cid) and c.comment_approved != 'spam';";	
+		$sql = "select count(comment_ID) from {$wpdb->comments} c where c.comment_ID >= {$min_cid} and c.comment_approved != 'spam';";			
 		$totalCommentCount = $wpdb->get_var($sql);
 		
-		$sql = "select * from {$wpdb->comments} c where c.comment_ID >= ($min_cid) and c.comment_ID <= {$start} and c.comment_approved != 'spam' order by c.comment_ID DESC limit 0, $count";
+		$sql = "select * from {$wpdb->comments} c where c.comment_ID >= {$min_cid} and c.comment_ID <= {$start} and c.comment_approved != 'spam' order by c.comment_ID DESC limit 0, $count";		
 		dbg('sql', $sql);
 		
 		$results = $wpdb->get_results($sql);
@@ -1007,7 +1038,7 @@ if (!function_exists('wp_notify_moderator')) {
 		dbg('next_id', $next_id);
 		id_save_option('id_import_comment_id', $next_id);
 
-		$sql = "select count(comment_ID) from {$wpdb->comments} c where c.comment_ID >= ($min_cid) and c.comment_ID <= {$next_id} and c.comment_approved != 'spam';";	
+		$sql = "select count(comment_ID) from {$wpdb->comments} c where c.comment_ID >= {$min_cid} and c.comment_ID <= {$next_id} and c.comment_approved != 'spam';";	
 		$totalRemainingCount = $wpdb->get_var($sql);
 		
 		$result = new stdclass;
@@ -1328,7 +1359,6 @@ if (!function_exists('wp_notify_moderator')) {
 		$queue = id_get_queue();
 		$op = $queue->add('user_login', $fields, 'id_profile_update_callback');
 		$queue->ping(array($op));
-		// $queue->create();
 
 		return true;
 	}
@@ -1458,13 +1488,13 @@ if (!function_exists('wp_notify_moderator')) {
 				<div style="overflow:hidden;">
 					<form id="id_manual_settings" class="ui-tabs-panel" action="options.php" method="post">
 						<input type="hidden" name="action" value="update" />
-						<input type="hidden" name="page_options" value="id_moderationPage,id_useIDComments,id_jsCommentLinks,id_syncWPComments,id_syncWPPosts" />
+						<input type="hidden" name="page_options" value="id_moderationPage,id_useIDComments,id_jsCommentLinks,id_syncWPComments,id_syncWPPosts,id_revertMobile" />
 						<?php wp_nonce_field('update-options'); ?>
 									
 						<table class="form-table">
 							<tbody>
 								<tr valign="top">
-									<th scope="row" style="white-space: nowrap;" ><?php _e('Comment Links', 'intensedebate'); ?> <a href="#divCommentLinkInfo" onclick="document.getElementById('divCommentLinkInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></a></th>
+									<th scope="row" style="white-space: nowrap;" ><?php _e('Comment Links', 'intensedebate'); ?> <span style="cursor:pointer;" onclick="document.getElementById('divCommentLinkInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></span></th>
 									<td>
 										<input type="radio" name="id_jsCommentLinks" value=0 <?php if(get_option('id_jsCommentLinks')==0) echo "checked"; ?> > <?php _e('IntenseDebate Enhanced Comment Links', 'intensedebate'); ?> (<a href="http://www.intensedebate.com/editacct/<?php echo get_option('id_blogID');?>" target="_blank" title="Customize Comment Links"><?php _e('Customize Them', 'intensedebate'); ?></a>)<br>
 										<input type="radio" name="id_jsCommentLinks" value=1 <?php if(get_option('id_jsCommentLinks')==1) echo "checked"; ?> > <?php _e('Wordpress Standard Comment Links', 'intensedebate'); ?>
@@ -1473,7 +1503,7 @@ if (!function_exists('wp_notify_moderator')) {
 									</td>
 								</tr>
 								<tr valign="top">
-									<th scope="row" style="white-space: nowrap;" ><?php _e('Moderation Page', 'intensedebate'); ?> <a href="#divModPageInfo" onclick="document.getElementById('divModPageInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></a></th>
+									<th scope="row" style="white-space: nowrap;" ><?php _e('Moderation Page', 'intensedebate'); ?> <span style="cursor:pointer;" onclick="document.getElementById('divModPageInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></span></th>
 									<td>
 										<input type="radio" name="id_moderationPage" value=0 <?php if(get_option('id_moderationPage')==0) echo "checked"; ?> > <?php _e('IntenseDebate Enhanced Moderation', 'intensedebate'); ?> <br>
 										<input type="radio" name="id_moderationPage" value=1 <?php if(get_option('id_moderationPage')==1) echo "checked"; ?> > <?php _e('Wordpress Standard Moderation', 'intensedebate'); ?> 
@@ -1482,7 +1512,7 @@ if (!function_exists('wp_notify_moderator')) {
 									</td>
 								</tr>
 								<tr valign="top">
-									<th scope="row" style="white-space: nowrap;" ><?php _e('Comment System', 'intensedebate'); ?> <a href="#divCommentSystemInfo" onclick="document.getElementById('divCommentSystemInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></a></th>
+									<th scope="row" style="white-space: nowrap;" ><?php _e('Comment System', 'intensedebate'); ?> <span style="cursor:pointer;" onclick="document.getElementById('divCommentSystemInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></span></th>
 									<td>
 										<input type="radio" name="id_useIDComments" value=0 <?php if(get_option('id_useIDComments')==0) echo "checked"; ?> > <?php _e('IntenseDebate Enhanced Comments', 'intensedebate'); ?> <br>
 										<input type="radio" name="id_useIDComments" value=1 <?php if(get_option('id_useIDComments')==1) echo "checked"; ?> > <?php _e('Wordpress Standard Comments', 'intensedebate'); ?> 				
@@ -1491,7 +1521,7 @@ if (!function_exists('wp_notify_moderator')) {
 									</td>
 								</tr>
 								<tr valign="top">
-									<th scope="row" style="white-space: nowrap;" ><?php _e('Sync WP Comments', 'intensedebate'); ?> <a href="#divCommentSyncInfo" onclick="document.getElementById('divCommentSyncInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></a></th>
+									<th scope="row" style="white-space: nowrap;" ><?php _e('Sync WP Comments', 'intensedebate'); ?> <span style="cursor:pointer;" onclick="document.getElementById('divCommentSyncInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></span></th>
 									<td>
 										<input type="radio" name="id_syncWPComments" value=0 <?php if(get_option('id_syncWPComments')==0) echo "checked"; ?> > <?php _e('Sync that data back to IntenseDebate!', 'intensedebate'); ?> <br>
 										<input type="radio" name="id_syncWPComments" value=1 <?php if(get_option('id_syncWPComments')==1) echo "checked"; ?> > <?php _e('Let\'s just sync one-way instead.', 'intensedebate'); ?>							
@@ -1500,7 +1530,7 @@ if (!function_exists('wp_notify_moderator')) {
 									</td>
 								</tr>
 								<tr valign="top">
-									<th scope="row" style="white-space: nowrap;" ><?php _e('Sync WP Post Data', 'intensedebate'); ?> <a href="#divPostSyncInfo" onclick="document.getElementById('divPostSyncInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></a></th>
+									<th scope="row" style="white-space: nowrap;" ><?php _e('Sync WP Post Data', 'intensedebate'); ?> <span style="cursor:pointer;" onclick="document.getElementById('divPostSyncInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></span></th>
 									<td>
 										<input type="radio" name="id_syncWPPosts" value=0 <?php if(get_option('id_syncWPPosts')==0) echo "checked"; ?> > <?php _e('Sync that data back to IntenseDebate!', 'intensedebate'); ?> <br>
 										<input type="radio" name="id_syncWPPosts" value=1 <?php if(get_option('id_syncWPPosts')==1) echo "checked"; ?> > <?php _e('Let\'s just sync one-way instead.', 'intensedebate'); ?>
@@ -1509,7 +1539,16 @@ if (!function_exists('wp_notify_moderator')) {
 									</td>
 								</tr>
 								<tr valign="top">
-									<th scope="row" style="white-space: nowrap;" ><?php _e('Import Status', 'intensedebate'); ?> <a href="#divImportInfo" onclick="document.getElementById('divImportInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></a></th>
+									<th scope="row" style="white-space: nowrap;" ><?php _e('Comments for mobile devices', 'intensedebate'); ?> <span style="cursor:pointer;" onclick="document.getElementById('divRevertMobileInfo').className='';"><img src="http://intensedebate.com/images1/wp-info.png" /></span></th>
+									<td>
+										<input type="radio" name="id_revertMobile" value=0 <?php if(get_option('id_revertMobile')==0) echo "checked"; ?> > <?php _e('Revert to WordPress comments for visitors on mobile devices', 'intensedebate'); ?> <br>
+										<input type="radio" name="id_revertMobile" value=1 <?php if(get_option('id_revertMobile')==1) echo "checked"; ?> > <?php _e('Use IntenseDebate comments for visitors on mobile devices', 'intensedebate'); ?>
+										<span class="idwp-clear"></span>                            
+										<p id="divRevertMobileInfo" class="hidden"><?php _e('This setting will determine if we show IntenseDebate comments or Wordpress comments when a reader on a mobile device visits your blog.  Because IntenseDebate is not yet fully compatible with all mobile devices, we suggest reverting to the standard WordPress comments when mobile devices access your blog.', 'intensedebate'); ?></p>
+									</td>
+								</tr>								
+								<tr valign="top">
+									<th scope="row" style="white-space: nowrap;" ><?php _e('Import Status', 'intensedebate'); ?> <span onclick="document.getElementById('divImportInfo').className='';" style="cursor:pointer;"><img src="http://intensedebate.com/images1/wp-info.png" /></span></th>
 									<td>
 									<span id="divImportStatus"><?php _e('Checking...', 'intensedebate'); ?></span>
 									<span class="idwp-clear"></span>                            
@@ -1585,6 +1624,7 @@ if (!function_exists('wp_notify_moderator')) {
 			, 'id_request_queue'
 			, 'id_syncWPComments'
 			, 'id_syncWPPosts'
+			, 'id_revertMobile'
 			, 'id_useIDComments'
 		);
 		foreach ($settings as $setting) {
@@ -1688,14 +1728,12 @@ if (!function_exists('wp_notify_moderator')) {
 		}
 			
 		if (!count($messages)) {
-			$queue = id_get_queue();
-			$queue->create();
+			$queue = id_get_queue();			
 			$op = $queue->add('user_login', $fields, 'id_process_user_login_callback');
 			$queue->ping(array($op));
 			$loginOperation = $queue->operations[0];
 			$loginResponse = $loginOperation->response;
-			$messages[] = id_coalesce(@$loginResponse->error_msg, "Login successful");
-			$queue->create();
+			$messages[] = id_coalesce(@$loginResponse->error_msg, "Login successful");			
 		}
 		
 		if (count($messages)) {
@@ -1738,6 +1776,7 @@ if (!function_exists('wp_notify_moderator')) {
 			id_save_option('id_useIDComments', 0);
 			id_save_option('id_syncWPComments', 0);
 			id_save_option('id_syncWPPosts', 0);
+			id_save_option('id_revertMobile', 0);
 			
 			id_save_usermeta_array($userdata->ID, array(
 				'id_userID' => $response->userID,
@@ -1928,14 +1967,20 @@ if (!function_exists('wp_notify_moderator')) {
 // COMMENT MODERATION PAGE
 	
 	function id_moderate_comments() {
-	
+		global $userdata;
+		$wp_userID = $userdata->ID;
+		
+		$userID = get_usermeta($wp_userID, 'id_userID');
+		$userKey = get_usermeta($wp_userID, 'id_userKey');
+		
+		$curSysTime = gmdate("U");
 		?>
 		<div id="wpbody">			
 			<div class="wrap">
 				<div id="intense_debate_news-wrap">
 				</div>
 				<h2><?php _e('Manage Comments', 'intensedebate'); ?></h2>
-				<iframe frameborder="0" id="id_iframe_moderation" src="<?php echo(ID_COMMENT_MODERATION_PAGE.get_option('id_blogID')); ?>" style="width: 100%; height: 500px; border: none;" onload="addScript()
+				<iframe frameborder="0" id="id_iframe_moderation" src="<?php echo(ID_COMMENT_MODERATION_PAGE.get_option('id_blogID')."&userid=$userID&time=$curSysTime&authstr=".md5($userKey.$curSysTime)); ?>" style="width: 100%; height: 500px; border: none;" onload="addScript()
 ";></iframe>
 			</div>
 		</div>
@@ -2247,7 +2292,7 @@ if (version_compare( get_bloginfo('version'), '2.5', '>=')) {
 
 // jquery.validate
 /* ignore IE throwing errors when focusing hidden elements */
-(function($){$.extend($.fn,{validate:function(options){if(!this.length){options&&options.debug&&window.console&&console.warn("nothing selected, can't validate, returning nothing");return;}var validator=$.data(this[0],'validator');if(validator){return validator;}validator=new $.validator(options,this[0]);$.data(this[0],'validator',validator);if(validator.settings.onsubmit){this.find("input, button").filter(".cancel").click(function(){validator.cancelSubmit=true;});this.submit(function(event){if(validator.settings.debug)event.preventDefault();function handle(){if(validator.settings.submitHandler){validator.settings.submitHandler.call(validator,validator.currentForm);return false;}return true;}if(validator.cancelSubmit){validator.cancelSubmit=false;return handle();}if(validator.form()){if(validator.pendingRequest){validator.formSubmitted=true;return false;}return handle();}else{validator.focusInvalid();return false;}});}return validator;},valid:function(){if($(this[0]).is('form')){return this.validate().form();}else{var valid=false;var validator=$(this[0].form).validate();this.each(function(){valid|=validator.element(this);});return valid;}},removeAttrs:function(attributes){var result={},$element=this;$.each(attributes.split(/\s/),function(){result[this]=$element.attr(this);$element.removeAttr(this);});return result;},rules:function(command,argument){var element=this[0];if(command){var staticRules=$.data(element.form,'validator').settings.rules;var existingRules=$.validator.staticRules(element);switch(command){case"add":$.extend(existingRules,$.validator.normalizeRule(argument));staticRules[element.name]=existingRules;break;case"remove":if(!argument){delete staticRules[element.name];return existingRules;}var filtered={};$.each(argument.split(/\s/),function(index,method){filtered[method]=existingRules[method];delete existingRules[method];});return filtered;}}var data=$.validator.normalizeRules($.extend({},$.validator.metadataRules(element),$.validator.classRules(element),$.validator.attributeRules(element),$.validator.staticRules(element)),element);if(data.required){var param=data.required;delete data.required;data=$.extend({required:param},data);}return data;},push:function(t){return this.setArray(this.add(t).get());}});$.extend($.expr[":"],{blank:function(a){return!$.trim(a.value);},filled:function(a){return!!$.trim(a.value);},unchecked:function(a){return!a.checked;}});$.format=function(source,params){if(arguments.length==1)return function(){var args=$.makeArray(arguments);args.unshift(source);return $.format.apply(this,args);};if(arguments.length>2&&params.constructor!=Array){params=$.makeArray(arguments).slice(1);}if(params.constructor!=Array){params=[params];}$.each(params,function(i,n){source=source.replace(new RegExp("\\{"+i+"\\}","g"),n);});return source;};$.validator=function(options,form){this.settings=$.extend({},$.validator.defaults,options);this.currentForm=form;this.init();};$.extend($.validator,{defaults:{messages:{},groups:{},rules:{},errorClass:"error",errorElement:"label",focusInvalid:true,errorContainer:$([]),errorLabelContainer:$([]),onsubmit:true,ignore:[],onfocusin:function(element){this.lastActive=element;if(this.settings.focusCleanup&&!this.blockFocusCleanup){this.settings.unhighlight&&this.settings.unhighlight.call(this,element,this.settings.errorClass);this.errorsFor(element).hide();}},onfocusout:function(element){if(!this.checkable(element)&&(element.name in this.submitted||!this.optional(element))){this.element(element);}},onkeyup:function(element){if(element.name in this.submitted||element==this.lastElement){this.element(element);}},onclick:function(element){if(element.name in this.submitted)this.element(element);},highlight:function(element,errorClass){$(element).addClass(errorClass);},unhighlight:function(element,errorClass){$(element).removeClass(errorClass);}},setDefaults:function(settings){$.extend($.validator.defaults,settings);},messages:{required:"This field is required.",remote:"Please fix this field.",email:"Please enter a valid email address.",url:"Please enter a valid URL.",date:"Please enter a valid date.",dateISO:"Please enter a valid date (ISO).",dateDE:"Bitte geben Sie ein gültiges Datum ein.",number:"Please enter a valid number.",numberDE:"Bitte geben Sie eine Nummer ein.",digits:"Please enter only digits",creditcard:"Please enter a valid credit card.",equalTo:"Please enter the same value again.",accept:"Please enter a value with a valid extension.",maxlength:$.format("Please enter no more than {0} characters."),minlength:$.format("Please enter at least {0} characters."),rangelength:$.format("Please enter a value between {0} and {1} characters long."),range:$.format("Please enter a value between {0} and {1}."),max:$.format("Please enter a value less than or equal to {0}."),min:$.format("Please enter a value greater than or equal to {0}.")},autoCreateRanges:false,prototype:{init:function(){this.labelContainer=$(this.settings.errorLabelContainer);this.errorContext=this.labelContainer.length&&this.labelContainer||$(this.currentForm);this.containers=$(this.settings.errorContainer).add(this.settings.errorLabelContainer);this.submitted={};this.valueCache={};this.pendingRequest=0;this.pending={};this.invalid={};this.reset();var groups=(this.groups={});$.each(this.settings.groups,function(key,value){$.each(value.split(/\s/),function(index,name){groups[name]=key;});});var rules=this.settings.rules;$.each(rules,function(key,value){rules[key]=$.validator.normalizeRule(value);});function delegate(event){var validator=$.data(this[0].form,"validator");validator.settings["on"+event.type]&&validator.settings["on"+event.type].call(validator,this[0]);}$(this.currentForm).delegate("focusin focusout keyup",":text, :password, :file, select, textarea",delegate).delegate("click",":radio, :checkbox",delegate);},form:function(){this.checkForm();$.extend(this.submitted,this.errorMap);this.invalid=$.extend({},this.errorMap);if(!this.valid())$(this.currentForm).triggerHandler("invalid-form.validate",[this]);this.showErrors();return this.valid();},checkForm:function(){this.prepareForm();for(var i=0,elements=(this.currentElements=this.elements());elements[i];i++){this.check(elements[i]);}return this.valid();},element:function(element){element=this.clean(element);this.lastElement=element;this.prepareElement(element);this.currentElements=$(element);var result=this.check(element);if(result){delete this.invalid[element.name];}else{this.invalid[element.name]=true;}if(!this.numberOfInvalids()){this.toHide.push(this.containers);}this.showErrors();return result;},showErrors:function(errors){if(errors){$.extend(this.errorMap,errors);this.errorList=[];for(var name in errors){this.errorList.push({message:errors[name],element:this.findByName(name)[0]});}this.successList=$.grep(this.successList,function(element){return!(element.name in errors);});}this.settings.showErrors?this.settings.showErrors.call(this,this.errorMap,this.errorList):this.defaultShowErrors();},resetForm:function(){if($.fn.resetForm)$(this.currentForm).resetForm();this.submitted={};this.prepareForm();this.hideErrors();this.elements().removeClass(this.settings.errorClass);},numberOfInvalids:function(){return this.objectLength(this.invalid);},objectLength:function(obj){var count=0;for(var i in obj)count++;return count;},hideErrors:function(){this.addWrapper(this.toHide).hide();},valid:function(){return this.size()==0;},size:function(){return this.errorList.length;},focusInvalid:function(){if(this.settings.focusInvalid){try{$(this.findLastActive()||this.errorList.length&&this.errorList[0].element||[]).filter(":visible").focus();}catch(e){}}},findLastActive:function(){var lastActive=this.lastActive;return lastActive&&$.grep(this.errorList,function(n){return n.element.name==lastActive.name;}).length==1&&lastActive;},elements:function(){var validator=this,rulesCache={};return $([]).add(this.currentForm.elements).filter(":input").not(":submit, :reset, :image, [disabled]").not(this.settings.ignore).filter(function(){!this.name&&validator.settings.debug&&window.console&&console.error("%o has no name assigned",this);if(this.name in rulesCache||!validator.objectLength($(this).rules()))return false;rulesCache[this.name]=true;return true;});},clean:function(selector){return $(selector)[0];},errors:function(){return $(this.settings.errorElement+"."+this.settings.errorClass,this.errorContext);},reset:function(){this.successList=[];this.errorList=[];this.errorMap={};this.toShow=$([]);this.toHide=$([]);this.formSubmitted=false;this.currentElements=$([]);},prepareForm:function(){this.reset();this.toHide=this.errors().push(this.containers);},prepareElement:function(element){this.reset();this.toHide=this.errorsFor(element);},check:function(element){element=this.clean(element);if(this.checkable(element)){element=this.findByName(element.name)[0];}var rules=$(element).rules();var dependencyMismatch=false;for(method in rules){var rule={method:method,parameters:rules[method]};try{var result=$.validator.methods[method].call(this,$.trim(element.value),element,rule.parameters);if(result=="dependency-mismatch"){dependencyMismatch=true;continue;}dependencyMismatch=false;if(result=="pending"){this.toHide=this.toHide.not(this.errorsFor(element));return;}if(!result){this.formatAndAdd(element,rule);return false;}}catch(e){this.settings.debug&&window.console&&console.log("exception occured when checking element "+element.id+", check the '"+rule.method+"' method");throw e;}}if(dependencyMismatch)return;if(this.objectLength(rules))this.successList.push(element);return true;},customMetaMessage:function(element,method){if(!$.metadata)return;var meta=this.settings.meta?$(element).metadata()[this.settings.meta]:$(element).metadata();return meta.messages&&meta.messages[method];},customMessage:function(name,method){var m=this.settings.messages[name];return m&&(m.constructor==String?m:m[method]);},findDefined:function(){for(var i=0;i<arguments.length;i++){if(arguments[i]!==undefined)return arguments[i];}return undefined;},defaultMessage:function(element,method){return this.findDefined(this.customMessage(element.name,method),this.customMetaMessage(element,method),element.title||undefined,$.validator.messages[method],"<strong>Warning: No message defined for "+element.name+"</strong>");},formatAndAdd:function(element,rule){var message=this.defaultMessage(element,rule.method);if(typeof message=="function")message=message.call(this,rule.parameters,element);this.errorList.push({message:message,element:element});this.errorMap[element.name]=message;this.submitted[element.name]=message;},addWrapper:function(toToggle){if(this.settings.wrapper)toToggle.push(toToggle.parents(this.settings.wrapper));return toToggle;},defaultShowErrors:function(){for(var i=0;this.errorList[i];i++){var error=this.errorList[i];this.settings.highlight&&this.settings.highlight.call(this,error.element,this.settings.errorClass);this.showLabel(error.element,error.message);}if(this.errorList.length){this.toShow.push(this.containers);}if(this.settings.success){for(var i=0;this.successList[i];i++){this.showLabel(this.successList[i]);}}if(this.settings.unhighlight){for(var i=0,elements=this.validElements();elements[i];i++){this.settings.unhighlight.call(this,elements[i],this.settings.errorClass);}}this.toHide=this.toHide.not(this.toShow);this.hideErrors();this.addWrapper(this.toShow).show();},validElements:function(){return this.currentElements.not(this.invalidElements());},invalidElements:function(){return $(this.errorList).map(function(){return this.element;});},showLabel:function(element,message){var label=this.errorsFor(element);if(label.length){label.removeClass().addClass(this.settings.errorClass);label.attr("generated")&&label.html(message);}else{label=$("<"+this.settings.errorElement+"/>").attr({"for":this.idOrName(element),generated:true}).addClass(this.settings.errorClass).html(message||"");if(this.settings.wrapper){label=label.hide().show().wrap("<"+this.settings.wrapper+">").parent();}if(!this.labelContainer.append(label).length)this.settings.errorPlacement?this.settings.errorPlacement(label,$(element)):label.insertAfter(element);}if(!message&&this.settings.success){label.text("");typeof this.settings.success=="string"?label.addClass(this.settings.success):this.settings.success(label);}this.toShow.push(label);},errorsFor:function(element){return this.errors().filter("[@for='"+this.idOrName(element)+"']");},idOrName:function(element){return this.groups[element.name]||(this.checkable(element)?element.name:element.id||element.name);},checkable:function(element){return/radio|checkbox/i.test(element.type);},findByName:function(name){var form=this.currentForm;return $(document.getElementsByName(name)).map(function(index,element){return element.form==form&&element.name==name&&element||null;});},getLength:function(value,element){switch(element.nodeName.toLowerCase()){case'select':return $("option:selected",element).length;case'input':if(this.checkable(element))return this.findByName(element.name).filter(':checked').length;}return value.length;},depend:function(param,element){return this.dependTypes[typeof param]?this.dependTypes[typeof param](param,element):true;},dependTypes:{"boolean":function(param,element){return param;},"string":function(param,element){return!!$(param,element.form).length;},"function":function(param,element){return param(element);}},optional:function(element){return!$.validator.methods.required.call(this,$.trim(element.value),element)&&"dependency-mismatch";},startRequest:function(element){if(!this.pending[element.name]){this.pendingRequest++;this.pending[element.name]=true;}},stopRequest:function(element,valid){this.pendingRequest--;if(this.pendingRequest<0)this.pendingRequest=0;delete this.pending[element.name];if(valid&&this.pendingRequest==0&&this.formSubmitted&&this.form()){$(this.currentForm).submit();}},previousValue:function(element){return $.data(element,"previousValue")||$.data(element,"previousValue",previous={old:null,valid:true,message:this.defaultMessage(element,"remote")});}},classRuleSettings:{required:{required:true},email:{email:true},url:{url:true},date:{date:true},dateISO:{dateISO:true},dateDE:{dateDE:true},number:{number:true},numberDE:{numberDE:true},digits:{digits:true},creditcard:{creditcard:true}},addClassRules:function(className,rules){className.constructor==String?this.classRuleSettings[className]=rules:$.extend(this.classRuleSettings,className);},classRules:function(element){var rules={};var classes=$(element).attr('class');classes&&$.each(classes.split(' '),function(){if(this in $.validator.classRuleSettings){$.extend(rules,$.validator.classRuleSettings[this]);}});return rules;},attributeRules:function(element){var rules={};var $element=$(element);for(method in $.validator.methods){var value=$element.attr(method);if(value){rules[method]=value;}}if(rules.maxlength&&/-1|2147483647|524288/.test(rules.maxlength)){delete rules.maxlength;}return rules;},metadataRules:function(element){if(!$.metadata)return{};var meta=$.data(element.form,'validator').settings.meta;return meta?$(element).metadata()[meta]:$(element).metadata();},staticRules:function(element){var rules={};var validator=$.data(element.form,'validator');if(validator.settings.rules){rules=$.validator.normalizeRule(validator.settings.rules[element.name])||{};}return rules;},normalizeRules:function(rules,element){$.each(rules,function(prop,val){if(val===false){delete rules[prop];return;}if(val.param||val.depends){var keepRule=true;switch(typeof val.depends){case"string":keepRule=!!$(val.depends,element.form).length;break;case"function":keepRule=val.depends.call(element,element);break;}if(keepRule){rules[prop]=val.param!==undefined?val.param:true;}else{delete rules[prop];}}});$.each(rules,function(rule,parameter){rules[rule]=$.isFunction(parameter)?parameter(element):parameter;});$.each(['minlength','maxlength','min','max'],function(){if(rules[this]){rules[this]=Number(rules[this]);}});$.each(['rangelength','range'],function(){if(rules[this]){rules[this]=[Number(rules[this][0]),Number(rules[this][1])];}});if($.validator.autoCreateRanges){if(rules.min&&rules.max){rules.range=[rules.min,rules.max];delete rules.min;delete rules.max;}if(rules.minlength&&rules.maxlength){rules.rangelength=[rules.minlength,rules.maxlength];delete rules.minlength;delete rules.maxlength;}}if(rules.messages){delete rules.messages}return rules;},normalizeRule:function(data){if(typeof data=="string"){var transformed={};$.each(data.split(/\s/),function(){transformed[this]=true;});data=transformed;}return data;},addMethod:function(name,method,message){$.validator.methods[name]=method;$.validator.messages[name]=message;if(method.length<3){$.validator.addClassRules(name,$.validator.normalizeRule(name));}},methods:{required:function(value,element,param){if(!this.depend(param,element))return"dependency-mismatch";switch(element.nodeName.toLowerCase()){case'select':var options=$("option:selected",element);return options.length>0&&(element.type=="select-multiple"||($.browser.msie&&!(options[0].attributes['value'].specified)?options[0].text:options[0].value).length>0);case'input':if(this.checkable(element))return this.getLength(value,element)>0;default:return value.length>0;}},remote:function(value,element,param){if(this.optional(element))return"dependency-mismatch";var previous=this.previousValue(element);if(!this.settings.messages[element.name])this.settings.messages[element.name]={};this.settings.messages[element.name].remote=typeof previous.message=="function"?previous.message(value):previous.message;if(previous.old!==value){previous.old=value;var validator=this;this.startRequest(element);var data={};data[element.name]=value;$.ajax({url:param,mode:"abort",port:"validate"+element.name,dataType:"json",data:data,success:function(response){if(!response){var errors={};errors[element.name]=response||validator.defaultMessage(element,"remote");validator.showErrors(errors);}else{var submitted=validator.formSubmitted;validator.prepareElement(element);validator.formSubmitted=submitted;validator.successList.push(element);validator.showErrors();}previous.valid=response;validator.stopRequest(element,response);}});return"pending";}else if(this.pending[element.name]){return"pending";}return previous.valid;},minlength:function(value,element,param){return this.optional(element)||this.getLength(value,element)>=param;},maxlength:function(value,element,param){return this.optional(element)||this.getLength(value,element)<=param;},rangelength:function(value,element,param){var length=this.getLength(value,element);return this.optional(element)||(length>=param[0]&&length<=param[1]);},min:function(value,element,param){return this.optional(element)||value>=param;},max:function(value,element,param){return this.optional(element)||value<=param;},range:function(value,element,param){return this.optional(element)||(value>=param[0]&&value<=param[1]);},email:function(value,element){return this.optional(element)||/^((([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+(\.([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+)*)|((\x22)((((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(([\x01-\x08\x0b\x0c\x0e-\x1f\x7f]|\x21|[\x23-\x5b]|[\x5d-\x7e]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(\\([\x01-\x09\x0b\x0c\x0d-\x7f]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))))*(((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(\x22)))@((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?$/i.test(element.value);},url:function(value,element){return this.optional(element)||/^(https?|ftp):\/\/(((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:)*@)?(((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5]))|((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?)(:\d*)?)(\/((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)+(\/(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*)?)?(\?((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|[\uE000-\uF8FF]|\/|\?)*)?(\#((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|\/|\?)*)?$/i.test(element.value);},date:function(value,element){return this.optional(element)||!/Invalid|NaN/.test(new Date(value));},dateISO:function(value,element){return this.optional(element)||/^\d{4}[\/-]\d{1,2}[\/-]\d{1,2}$/.test(value);},dateDE:function(value,element){return this.optional(element)||/^\d\d?\.\d\d?\.\d\d\d?\d?$/.test(value);},number:function(value,element){return this.optional(element)||/^-?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(value);},numberDE:function(value,element){return this.optional(element)||/^-?(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d+)?$/.test(value);},digits:function(value,element){return this.optional(element)||/^\d+$/.test(value);},creditcard:function(value,element){if(this.optional(element))return"dependency-mismatch";if(/[^0-9-]+/.test(value))return false;var nCheck=0,nDigit=0,bEven=false;value=value.replace(/\D/g,"");for(n=value.length-1;n>=0;n--){var cDigit=value.charAt(n);var nDigit=parseInt(cDigit,10);if(bEven){if((nDigit*=2)>9)nDigit-=9;}nCheck+=nDigit;bEven=!bEven;}return(nCheck%10)==0;},accept:function(value,element,param){param=typeof param=="string"?param:"png|jpe?g|gif";return this.optional(element)||value.match(new RegExp(".("+param+")$","i"));},equalTo:function(value,element,param){return value==$(param).val();}}});})(jQuery);;(function($){var ajax=$.ajax;var pendingRequests={};$.ajax=function(settings){settings=$.extend(settings,$.extend({},$.ajaxSettings,settings));var port=settings.port;if(settings.mode=="abort"){if(pendingRequests[port]){pendingRequests[port].abort();}return(pendingRequests[port]=ajax.apply(this,arguments));}return ajax.apply(this,arguments);};})(jQuery);;(function($){$.each({focus:'focusin',blur:'focusout'},function(original,fix){$.event.special[fix]={setup:function(){if($.browser.msie)return false;this.addEventListener(original,$.event.special[fix].handler,true);},teardown:function(){if($.browser.msie)return false;this.removeEventListener(original,$.event.special[fix].handler,true);},handler:function(e){arguments[0]=$.event.fix(e);arguments[0].type=fix;return $.event.handle.apply(this,arguments);}};});$.extend($.fn,{delegate:function(type,delegate,handler){return this.bind(type,function(event){var target=$(event.target);if(target.is(delegate)){return handler.apply(target,arguments);}});},triggerEvent:function(type,target){return this.triggerHandler(type,[$.event.fix({type:type,target:target})]);}})})(jQuery);
+(function($){$.extend($.fn,{validate:function(options){if(!this.length){options&&options.debug&&window.console&&console.warn("nothing selected, can't validate, returning nothing");return;}var validator=$.data(this[0],'validator');if(validator){return validator;}validator=new $.validator(options,this[0]);$.data(this[0],'validator',validator);if(validator.settings.onsubmit){this.find("input, button").filter(".cancel").click(function(){validator.cancelSubmit=true;});this.submit(function(event){if(validator.settings.debug)event.preventDefault();function handle(){if(validator.settings.submitHandler){validator.settings.submitHandler.call(validator,validator.currentForm);return false;}return true;}if(validator.cancelSubmit){validator.cancelSubmit=false;return handle();}if(validator.form()){if(validator.pendingRequest){validator.formSubmitted=true;return false;}return handle();}else{validator.focusInvalid();return false;}});}return validator;},valid:function(){if($(this[0]).is('form')){return this.validate().form();}else{var valid=false;var validator=$(this[0].form).validate();this.each(function(){valid|=validator.element(this);});return valid;}},removeAttrs:function(attributes){var result={},$element=this;$.each(attributes.split(/\s/),function(){result[this]=$element.attr(this);$element.removeAttr(this);});return result;},rules:function(command,argument){var element=this[0];if(command){var staticRules=$.data(element.form,'validator').settings.rules;var existingRules=$.validator.staticRules(element);switch(command){case"add":$.extend(existingRules,$.validator.normalizeRule(argument));staticRules[element.name]=existingRules;break;case"remove":if(!argument){delete staticRules[element.name];return existingRules;}var filtered={};$.each(argument.split(/\s/),function(index,method){filtered[method]=existingRules[method];delete existingRules[method];});return filtered;}}var data=$.validator.normalizeRules($.extend({},$.validator.metadataRules(element),$.validator.classRules(element),$.validator.attributeRules(element),$.validator.staticRules(element)),element);if(data.required){var param=data.required;delete data.required;data=$.extend({required:param},data);}return data;},push:function(t){return this.setArray(this.add(t).get());}});$.extend($.expr[":"],{blank:function(a){return!$.trim(a.value);},filled:function(a){return!!$.trim(a.value);},unchecked:function(a){return!a.checked;}});$.format=function(source,params){if(arguments.length==1)return function(){var args=$.makeArray(arguments);args.unshift(source);return $.format.apply(this,args);};if(arguments.length>2&&params.constructor!=Array){params=$.makeArray(arguments).slice(1);}if(params.constructor!=Array){params=[params];}$.each(params,function(i,n){source=source.replace(new RegExp("\\{"+i+"\\}","g"),n);});return source;};$.validator=function(options,form){this.settings=$.extend({},$.validator.defaults,options);this.currentForm=form;this.init();};$.extend($.validator,{defaults:{messages:{},groups:{},rules:{},errorClass:"error",errorElement:"label",focusInvalid:true,errorContainer:$([]),errorLabelContainer:$([]),onsubmit:true,ignore:[],onfocusin:function(element){this.lastActive=element;if(this.settings.focusCleanup&&!this.blockFocusCleanup){this.settings.unhighlight&&this.settings.unhighlight.call(this,element,this.settings.errorClass);this.errorsFor(element).hide();}},onfocusout:function(element){if(!this.checkable(element)&&(element.name in this.submitted||!this.optional(element))){this.element(element);}},onkeyup:function(element){if(element.name in this.submitted||element==this.lastElement){this.element(element);}},onclick:function(element){if(element.name in this.submitted)this.element(element);},highlight:function(element,errorClass){$(element).addClass(errorClass);},unhighlight:function(element,errorClass){$(element).removeClass(errorClass);}},setDefaults:function(settings){$.extend($.validator.defaults,settings);},messages:{required:"This field is required.",remote:"Please fix this field.",email:"Please enter a valid email address.",url:"Please enter a valid URL.",date:"Please enter a valid date.",dateISO:"Please enter a valid date (ISO).",dateDE:"Bitte geben Sie ein gï¿½ltiges Datum ein.",number:"Please enter a valid number.",numberDE:"Bitte geben Sie eine Nummer ein.",digits:"Please enter only digits",creditcard:"Please enter a valid credit card.",equalTo:"Please enter the same value again.",accept:"Please enter a value with a valid extension.",maxlength:$.format("Please enter no more than {0} characters."),minlength:$.format("Please enter at least {0} characters."),rangelength:$.format("Please enter a value between {0} and {1} characters long."),range:$.format("Please enter a value between {0} and {1}."),max:$.format("Please enter a value less than or equal to {0}."),min:$.format("Please enter a value greater than or equal to {0}.")},autoCreateRanges:false,prototype:{init:function(){this.labelContainer=$(this.settings.errorLabelContainer);this.errorContext=this.labelContainer.length&&this.labelContainer||$(this.currentForm);this.containers=$(this.settings.errorContainer).add(this.settings.errorLabelContainer);this.submitted={};this.valueCache={};this.pendingRequest=0;this.pending={};this.invalid={};this.reset();var groups=(this.groups={});$.each(this.settings.groups,function(key,value){$.each(value.split(/\s/),function(index,name){groups[name]=key;});});var rules=this.settings.rules;$.each(rules,function(key,value){rules[key]=$.validator.normalizeRule(value);});function delegate(event){var validator=$.data(this[0].form,"validator");validator.settings["on"+event.type]&&validator.settings["on"+event.type].call(validator,this[0]);}$(this.currentForm).delegate("focusin focusout keyup",":text, :password, :file, select, textarea",delegate).delegate("click",":radio, :checkbox",delegate);},form:function(){this.checkForm();$.extend(this.submitted,this.errorMap);this.invalid=$.extend({},this.errorMap);if(!this.valid())$(this.currentForm).triggerHandler("invalid-form.validate",[this]);this.showErrors();return this.valid();},checkForm:function(){this.prepareForm();for(var i=0,elements=(this.currentElements=this.elements());elements[i];i++){this.check(elements[i]);}return this.valid();},element:function(element){element=this.clean(element);this.lastElement=element;this.prepareElement(element);this.currentElements=$(element);var result=this.check(element);if(result){delete this.invalid[element.name];}else{this.invalid[element.name]=true;}if(!this.numberOfInvalids()){this.toHide.push(this.containers);}this.showErrors();return result;},showErrors:function(errors){if(errors){$.extend(this.errorMap,errors);this.errorList=[];for(var name in errors){this.errorList.push({message:errors[name],element:this.findByName(name)[0]});}this.successList=$.grep(this.successList,function(element){return!(element.name in errors);});}this.settings.showErrors?this.settings.showErrors.call(this,this.errorMap,this.errorList):this.defaultShowErrors();},resetForm:function(){if($.fn.resetForm)$(this.currentForm).resetForm();this.submitted={};this.prepareForm();this.hideErrors();this.elements().removeClass(this.settings.errorClass);},numberOfInvalids:function(){return this.objectLength(this.invalid);},objectLength:function(obj){var count=0;for(var i in obj)count++;return count;},hideErrors:function(){this.addWrapper(this.toHide).hide();},valid:function(){return this.size()==0;},size:function(){return this.errorList.length;},focusInvalid:function(){if(this.settings.focusInvalid){try{$(this.findLastActive()||this.errorList.length&&this.errorList[0].element||[]).filter(":visible").focus();}catch(e){}}},findLastActive:function(){var lastActive=this.lastActive;return lastActive&&$.grep(this.errorList,function(n){return n.element.name==lastActive.name;}).length==1&&lastActive;},elements:function(){var validator=this,rulesCache={};return $([]).add(this.currentForm.elements).filter(":input").not(":submit, :reset, :image, [disabled]").not(this.settings.ignore).filter(function(){!this.name&&validator.settings.debug&&window.console&&console.error("%o has no name assigned",this);if(this.name in rulesCache||!validator.objectLength($(this).rules()))return false;rulesCache[this.name]=true;return true;});},clean:function(selector){return $(selector)[0];},errors:function(){return $(this.settings.errorElement+"."+this.settings.errorClass,this.errorContext);},reset:function(){this.successList=[];this.errorList=[];this.errorMap={};this.toShow=$([]);this.toHide=$([]);this.formSubmitted=false;this.currentElements=$([]);},prepareForm:function(){this.reset();this.toHide=this.errors().push(this.containers);},prepareElement:function(element){this.reset();this.toHide=this.errorsFor(element);},check:function(element){element=this.clean(element);if(this.checkable(element)){element=this.findByName(element.name)[0];}var rules=$(element).rules();var dependencyMismatch=false;for(method in rules){var rule={method:method,parameters:rules[method]};try{var result=$.validator.methods[method].call(this,$.trim(element.value),element,rule.parameters);if(result=="dependency-mismatch"){dependencyMismatch=true;continue;}dependencyMismatch=false;if(result=="pending"){this.toHide=this.toHide.not(this.errorsFor(element));return;}if(!result){this.formatAndAdd(element,rule);return false;}}catch(e){this.settings.debug&&window.console&&console.log("exception occured when checking element "+element.id+", check the '"+rule.method+"' method");throw e;}}if(dependencyMismatch)return;if(this.objectLength(rules))this.successList.push(element);return true;},customMetaMessage:function(element,method){if(!$.metadata)return;var meta=this.settings.meta?$(element).metadata()[this.settings.meta]:$(element).metadata();return meta.messages&&meta.messages[method];},customMessage:function(name,method){var m=this.settings.messages[name];return m&&(m.constructor==String?m:m[method]);},findDefined:function(){for(var i=0;i<arguments.length;i++){if(arguments[i]!==undefined)return arguments[i];}return undefined;},defaultMessage:function(element,method){return this.findDefined(this.customMessage(element.name,method),this.customMetaMessage(element,method),element.title||undefined,$.validator.messages[method],"<strong>Warning: No message defined for "+element.name+"</strong>");},formatAndAdd:function(element,rule){var message=this.defaultMessage(element,rule.method);if(typeof message=="function")message=message.call(this,rule.parameters,element);this.errorList.push({message:message,element:element});this.errorMap[element.name]=message;this.submitted[element.name]=message;},addWrapper:function(toToggle){if(this.settings.wrapper)toToggle.push(toToggle.parents(this.settings.wrapper));return toToggle;},defaultShowErrors:function(){for(var i=0;this.errorList[i];i++){var error=this.errorList[i];this.settings.highlight&&this.settings.highlight.call(this,error.element,this.settings.errorClass);this.showLabel(error.element,error.message);}if(this.errorList.length){this.toShow.push(this.containers);}if(this.settings.success){for(var i=0;this.successList[i];i++){this.showLabel(this.successList[i]);}}if(this.settings.unhighlight){for(var i=0,elements=this.validElements();elements[i];i++){this.settings.unhighlight.call(this,elements[i],this.settings.errorClass);}}this.toHide=this.toHide.not(this.toShow);this.hideErrors();this.addWrapper(this.toShow).show();},validElements:function(){return this.currentElements.not(this.invalidElements());},invalidElements:function(){return $(this.errorList).map(function(){return this.element;});},showLabel:function(element,message){var label=this.errorsFor(element);if(label.length){label.removeClass().addClass(this.settings.errorClass);label.attr("generated")&&label.html(message);}else{label=$("<"+this.settings.errorElement+"/>").attr({"for":this.idOrName(element),generated:true}).addClass(this.settings.errorClass).html(message||"");if(this.settings.wrapper){label=label.hide().show().wrap("<"+this.settings.wrapper+">").parent();}if(!this.labelContainer.append(label).length)this.settings.errorPlacement?this.settings.errorPlacement(label,$(element)):label.insertAfter(element);}if(!message&&this.settings.success){label.text("");typeof this.settings.success=="string"?label.addClass(this.settings.success):this.settings.success(label);}this.toShow.push(label);},errorsFor:function(element){return this.errors().filter("[@for='"+this.idOrName(element)+"']");},idOrName:function(element){return this.groups[element.name]||(this.checkable(element)?element.name:element.id||element.name);},checkable:function(element){return/radio|checkbox/i.test(element.type);},findByName:function(name){var form=this.currentForm;return $(document.getElementsByName(name)).map(function(index,element){return element.form==form&&element.name==name&&element||null;});},getLength:function(value,element){switch(element.nodeName.toLowerCase()){case'select':return $("option:selected",element).length;case'input':if(this.checkable(element))return this.findByName(element.name).filter(':checked').length;}return value.length;},depend:function(param,element){return this.dependTypes[typeof param]?this.dependTypes[typeof param](param,element):true;},dependTypes:{"boolean":function(param,element){return param;},"string":function(param,element){return!!$(param,element.form).length;},"function":function(param,element){return param(element);}},optional:function(element){return!$.validator.methods.required.call(this,$.trim(element.value),element)&&"dependency-mismatch";},startRequest:function(element){if(!this.pending[element.name]){this.pendingRequest++;this.pending[element.name]=true;}},stopRequest:function(element,valid){this.pendingRequest--;if(this.pendingRequest<0)this.pendingRequest=0;delete this.pending[element.name];if(valid&&this.pendingRequest==0&&this.formSubmitted&&this.form()){$(this.currentForm).submit();}},previousValue:function(element){return $.data(element,"previousValue")||$.data(element,"previousValue",previous={old:null,valid:true,message:this.defaultMessage(element,"remote")});}},classRuleSettings:{required:{required:true},email:{email:true},url:{url:true},date:{date:true},dateISO:{dateISO:true},dateDE:{dateDE:true},number:{number:true},numberDE:{numberDE:true},digits:{digits:true},creditcard:{creditcard:true}},addClassRules:function(className,rules){className.constructor==String?this.classRuleSettings[className]=rules:$.extend(this.classRuleSettings,className);},classRules:function(element){var rules={};var classes=$(element).attr('class');classes&&$.each(classes.split(' '),function(){if(this in $.validator.classRuleSettings){$.extend(rules,$.validator.classRuleSettings[this]);}});return rules;},attributeRules:function(element){var rules={};var $element=$(element);for(method in $.validator.methods){var value=$element.attr(method);if(value){rules[method]=value;}}if(rules.maxlength&&/-1|2147483647|524288/.test(rules.maxlength)){delete rules.maxlength;}return rules;},metadataRules:function(element){if(!$.metadata)return{};var meta=$.data(element.form,'validator').settings.meta;return meta?$(element).metadata()[meta]:$(element).metadata();},staticRules:function(element){var rules={};var validator=$.data(element.form,'validator');if(validator.settings.rules){rules=$.validator.normalizeRule(validator.settings.rules[element.name])||{};}return rules;},normalizeRules:function(rules,element){$.each(rules,function(prop,val){if(val===false){delete rules[prop];return;}if(val.param||val.depends){var keepRule=true;switch(typeof val.depends){case"string":keepRule=!!$(val.depends,element.form).length;break;case"function":keepRule=val.depends.call(element,element);break;}if(keepRule){rules[prop]=val.param!==undefined?val.param:true;}else{delete rules[prop];}}});$.each(rules,function(rule,parameter){rules[rule]=$.isFunction(parameter)?parameter(element):parameter;});$.each(['minlength','maxlength','min','max'],function(){if(rules[this]){rules[this]=Number(rules[this]);}});$.each(['rangelength','range'],function(){if(rules[this]){rules[this]=[Number(rules[this][0]),Number(rules[this][1])];}});if($.validator.autoCreateRanges){if(rules.min&&rules.max){rules.range=[rules.min,rules.max];delete rules.min;delete rules.max;}if(rules.minlength&&rules.maxlength){rules.rangelength=[rules.minlength,rules.maxlength];delete rules.minlength;delete rules.maxlength;}}if(rules.messages){delete rules.messages}return rules;},normalizeRule:function(data){if(typeof data=="string"){var transformed={};$.each(data.split(/\s/),function(){transformed[this]=true;});data=transformed;}return data;},addMethod:function(name,method,message){$.validator.methods[name]=method;$.validator.messages[name]=message;if(method.length<3){$.validator.addClassRules(name,$.validator.normalizeRule(name));}},methods:{required:function(value,element,param){if(!this.depend(param,element))return"dependency-mismatch";switch(element.nodeName.toLowerCase()){case'select':var options=$("option:selected",element);return options.length>0&&(element.type=="select-multiple"||($.browser.msie&&!(options[0].attributes['value'].specified)?options[0].text:options[0].value).length>0);case'input':if(this.checkable(element))return this.getLength(value,element)>0;default:return value.length>0;}},remote:function(value,element,param){if(this.optional(element))return"dependency-mismatch";var previous=this.previousValue(element);if(!this.settings.messages[element.name])this.settings.messages[element.name]={};this.settings.messages[element.name].remote=typeof previous.message=="function"?previous.message(value):previous.message;if(previous.old!==value){previous.old=value;var validator=this;this.startRequest(element);var data={};data[element.name]=value;$.ajax({url:param,mode:"abort",port:"validate"+element.name,dataType:"json",data:data,success:function(response){if(!response){var errors={};errors[element.name]=response||validator.defaultMessage(element,"remote");validator.showErrors(errors);}else{var submitted=validator.formSubmitted;validator.prepareElement(element);validator.formSubmitted=submitted;validator.successList.push(element);validator.showErrors();}previous.valid=response;validator.stopRequest(element,response);}});return"pending";}else if(this.pending[element.name]){return"pending";}return previous.valid;},minlength:function(value,element,param){return this.optional(element)||this.getLength(value,element)>=param;},maxlength:function(value,element,param){return this.optional(element)||this.getLength(value,element)<=param;},rangelength:function(value,element,param){var length=this.getLength(value,element);return this.optional(element)||(length>=param[0]&&length<=param[1]);},min:function(value,element,param){return this.optional(element)||value>=param;},max:function(value,element,param){return this.optional(element)||value<=param;},range:function(value,element,param){return this.optional(element)||(value>=param[0]&&value<=param[1]);},email:function(value,element){return this.optional(element)||/^((([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+(\.([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+)*)|((\x22)((((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(([\x01-\x08\x0b\x0c\x0e-\x1f\x7f]|\x21|[\x23-\x5b]|[\x5d-\x7e]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(\\([\x01-\x09\x0b\x0c\x0d-\x7f]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))))*(((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(\x22)))@((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?$/i.test(element.value);},url:function(value,element){return this.optional(element)||/^(https?|ftp):\/\/(((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:)*@)?(((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5]))|((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?)(:\d*)?)(\/((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)+(\/(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*)?)?(\?((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|[\uE000-\uF8FF]|\/|\?)*)?(\#((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|\/|\?)*)?$/i.test(element.value);},date:function(value,element){return this.optional(element)||!/Invalid|NaN/.test(new Date(value));},dateISO:function(value,element){return this.optional(element)||/^\d{4}[\/-]\d{1,2}[\/-]\d{1,2}$/.test(value);},dateDE:function(value,element){return this.optional(element)||/^\d\d?\.\d\d?\.\d\d\d?\d?$/.test(value);},number:function(value,element){return this.optional(element)||/^-?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(value);},numberDE:function(value,element){return this.optional(element)||/^-?(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d+)?$/.test(value);},digits:function(value,element){return this.optional(element)||/^\d+$/.test(value);},creditcard:function(value,element){if(this.optional(element))return"dependency-mismatch";if(/[^0-9-]+/.test(value))return false;var nCheck=0,nDigit=0,bEven=false;value=value.replace(/\D/g,"");for(n=value.length-1;n>=0;n--){var cDigit=value.charAt(n);var nDigit=parseInt(cDigit,10);if(bEven){if((nDigit*=2)>9)nDigit-=9;}nCheck+=nDigit;bEven=!bEven;}return(nCheck%10)==0;},accept:function(value,element,param){param=typeof param=="string"?param:"png|jpe?g|gif";return this.optional(element)||value.match(new RegExp(".("+param+")$","i"));},equalTo:function(value,element,param){return value==$(param).val();}}});})(jQuery);;(function($){var ajax=$.ajax;var pendingRequests={};$.ajax=function(settings){settings=$.extend(settings,$.extend({},$.ajaxSettings,settings));var port=settings.port;if(settings.mode=="abort"){if(pendingRequests[port]){pendingRequests[port].abort();}return(pendingRequests[port]=ajax.apply(this,arguments));}return ajax.apply(this,arguments);};})(jQuery);;(function($){$.each({focus:'focusin',blur:'focusout'},function(original,fix){$.event.special[fix]={setup:function(){if($.browser.msie)return false;this.addEventListener(original,$.event.special[fix].handler,true);},teardown:function(){if($.browser.msie)return false;this.removeEventListener(original,$.event.special[fix].handler,true);},handler:function(e){arguments[0]=$.event.fix(e);arguments[0].type=fix;return $.event.handle.apply(this,arguments);}};});$.extend($.fn,{delegate:function(type,delegate,handler){return this.bind(type,function(event){var target=$(event.target);if(target.is(delegate)){return handler.apply(target,arguments);}});},triggerEvent:function(type,target){return this.triggerHandler(type,[$.event.fix({type:type,target:target})]);}})})(jQuery);
 
 jQuery(function() {
 
@@ -3119,7 +3164,7 @@ if (class_exists('PEAR_Error')) {
 			$permalink = get_permalink($id);
 			$permalinkEncoded = urlencode($permalink);
 			
-			return "</a><a href='$permalink' class='IDCommentsReplace' name='$id'>".__('Comments', 'intensedebate')."</a><span style='display:none' id='IDCommentPostInfoTitle$id'>$posttitle</span><span style='display:none' id='IDCommentPostInfoTime$id'>$posttime</span><span style='display:none' id='IDCommentPostInfoAuthor$id'>$postauthor</span>";
+			return "<span class='IDCommentsReplace' style='display:none'>$id</span>".__('Comments', 'intensedebate')."<span style='display:none' id='IDCommentPostInfoPermalink$id'>$permalink</span><span style='display:none' id='IDCommentPostInfoTitle$id'>$posttitle</span><span style='display:none' id='IDCommentPostInfoTime$id'>$posttime</span><span style='display:none' id='IDCommentPostInfoAuthor$id'>$postauthor</span>";
 		}
 		else 
 		{
@@ -3130,6 +3175,8 @@ if (class_exists('PEAR_Error')) {
 	function id_get_comment_footer_script()
 	{	
 		global $id_link_wrapper_output;
+		global $id_cur_post;
+		
 		
 		if($id_link_wrapper_output)
 			return;
@@ -3137,7 +3184,7 @@ if (class_exists('PEAR_Error')) {
 		$id_link_wrapper_output = true;
 		
 		if(strlen(get_option("id_blogAcct"))>0) {
-			echo "<script src = 'http://www.intensedebate.com/js/wordpressTemplateLinkWrapper.php?acct=".get_option("id_blogAcct")."' type='text/javascript'></script>";
+			echo "<script src = 'http://www.intensedebate.com/js/wordpressTemplateLinkWrapper2.php?acct=".get_option("id_blogAcct")."' type='text/javascript'></script>";
 		}
 	}
 
