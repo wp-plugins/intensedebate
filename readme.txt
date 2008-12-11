@@ -11,8 +11,6 @@ IntenseDebate comments enhance and encourage conversation on your blog.  Build y
 
 IntenseDebate Comments enhance and encourage conversation on your blog or website. Full comment and account data sync between IntenseDebate and WordPress ensures that you will always have your comments. Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you! 
 
-*IntenseDebate is currently compatible with WordPress 2.7 with the exception of comment threading.  Please see the FAQ for further details.*
-
 == Installation ==
 
 *Note: As is the case when installing any new plugin, it's always a good idea to backup your blog data before installing.*
@@ -40,9 +38,6 @@ After installing and activating the IntenseDebate plugin you will need to update
 
 **Please Note:**
 Your comments may take several hours to import. The time of your import is dependent on how many other import requests we are receiving in addition to how many comments are currently being imported. 
-
-= Is IntenseDebate compatible with WordPress 2.7? =
-IntenseDebate is currently compatible with WordPress 2.7 with the exception of comment threading. Currently threaded comments in WordPress are synced to IntenseDebate but they are not threaded. Likewise, threaded comments in IntenseDebate are synced back to WordPress comments but they are not threaded. This is a work in progress.
 
 == Screenshots ==
 
