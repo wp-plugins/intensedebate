@@ -44,3 +44,6 @@ Your comments may take several hours to import. The time of your import is depen
 1. An example of the comment system itself.  Notice all the extra goodies like user profile information, reputation, threaded comments, comment voting, RSS feeds for everything, and more!
 2. This is the enhanced moderation screen.  Note the extra information about the commenter (same drop down menu for each user from the previous screenshot is available here).
 3. The settings page for the IntenseDebate plugin.  There are many ways to customize IntenseDebate to do just as much as you want it to.
+4. First step in the registration process - syncing up your IntenseDebate account with your WordPress blog.
+5. Second step of the registration process - the import to convert all your existing comments into IntenseDebate goodness.
+6. Final step of the registration process - a few helpful links to get you started getting the most out of your new IntenseDebate comment system.
