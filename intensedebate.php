@@ -3,7 +3,7 @@
 Plugin Name: IntenseDebate
 Plugin URI: http://intensedebate.com/wordpress
 Description: <a href="http://www.intensedebate.com">IntenseDebate Comments</a> enhance and encourage conversation on your blog or website.  Full comment and account data sync between IntenseDebate and WordPress ensures that you will always have your comments.  Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you!  To get started, please activate the plugin and adjust your  <a href="./options-general.php?page=id_settings">IntenseDebate settings</a> .
-Version: 2.0.17
+Version: 2.0.18
 Author: IntenseDebate & Crowd Favorite
 Author URI: http://crowdfavorite.com
 */
@@ -11,7 +11,7 @@ Author URI: http://crowdfavorite.com
 // CONSTANTS
 	
 	//This plugin's version 
-	define('ID_PLUGIN_VERSION', '2.0.17');
+	define('ID_PLUGIN_VERSION', '2.0.18');
 	
 	// api endpoints
 	define('ID_SERVICE', 'http://intensedebate.com/services/v1/operations/postOperations.php');
@@ -67,7 +67,8 @@ if (!function_exists('wp_notify_moderator')) {
 //Debug logging
 function id_debug_log($text)
 {
-	id_save_option("id_debug_log", get_option("id_debug_log")."\n\n".gmdate("Y-m-d H:i:s")." - $text\n\n\n");
+	$newLogData = get_option("id_debug_log")."\n\n".gmdate("Y-m-d H:i:s")." - $text\n\n\n";
+	id_save_option("id_debug_log", substr($newLogData, max(strlen($newLogData) - 1048576, 0)));
 }
 	
 // HOOK ASSIGNMENT
