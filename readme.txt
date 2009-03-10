@@ -1,6 +1,6 @@
 === IntenseDebate Comments ===
 Contributors: IntenseDebate, Crowd Favorite
-Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments
+Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, Intense Debate, IntenseDebate, comment system
 Requires at least: 2.5
 Tested up to: 2.7
 Stable tag: trunk
