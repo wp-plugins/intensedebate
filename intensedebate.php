@@ -3,7 +3,7 @@
 Plugin Name: IntenseDebate
 Plugin URI: http://intensedebate.com/wordpress
 Description: <a href="http://www.intensedebate.com">IntenseDebate Comments</a> enhance and encourage conversation on your blog or website.  Full comment and account data sync between IntenseDebate and WordPress ensures that you will always have your comments.  Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you!  To get started, please activate the plugin and adjust your  <a href="./options-general.php?page=id_settings">IntenseDebate settings</a> .
-Version: 2.1
+Version: 2.1.1
 Author: IntenseDebate & Automattic
 Author URI: http://intensedebate.com
 */
@@ -11,7 +11,7 @@ Author URI: http://intensedebate.com
 // CONSTANTS
 	
 	// This plugin's version 
-	define( 'ID_PLUGIN_VERSION', '2.1' );
+	define( 'ID_PLUGIN_VERSION', '2.1.1' );
 	
 	// API Endpoints
 	define( 'ID_BASEURL', 'http://intensedebate.com' );
@@ -32,7 +32,7 @@ Author URI: http://intensedebate.com
 	define( 'ID_COMMENT_MODERATION_PAGE', ID_BASEURL . '/wpIframe.php?acctid=' );
 	define( 'ID_REGISTRATION_PAGE', ID_BASEURL . '/signup' );
 	
-	// Set to true to get a detailed log of operations
+	// Set to true to get a detailed log of operations in your error_log and your DB ( wp_options WHERE option_name='id_debug_log' )
 	define( 'ID_DEBUG', false );
 	
 	// Get full path to this file
@@ -83,7 +83,7 @@ Author URI: http://intensedebate.com
 // HOOK ASSIGNMENT
 	function id_activate_hooks() {		
 		// warning that we don't support this version of wordpress
-		if ( stripos( get_bloginfo( 'version' ), "MU" ) == -1 && version_compare( get_bloginfo( 'version' ), ID_MIN_WP_VERSION, '<' ) ) {
+		if ( false === stripos( get_bloginfo( 'version' ), 'MU' ) && version_compare( get_bloginfo( 'version' ), ID_MIN_WP_VERSION, '<' ) ) {
 			add_action( 'admin_head', 'id_wordpress_version_warning' );
 			return;
 		}
@@ -261,11 +261,11 @@ Author URI: http://intensedebate.com
 
 	// blog option
 	function id_save_option( $name, $value ) {
-		$option_name = 'myhack_extraction_length'; 
-		if ( get_option( $name ) === false ) {
-			add_option( $name, $value, $depreciated = '', $autoload = 'no' );
+		if ( false === get_option( $name ) ) {
+			add_option( $name, $value, '', 'no' );
+		} else {
+			update_option( $name, $value );
 		}
-		update_option( $name, $value );
 	}
 
 	// user options
@@ -533,7 +533,7 @@ Author URI: http://intensedebate.com
 		function export( $bRemote = true ) {
 			$o = array();
 			foreach ( $this->properties as $local => $remote ) {
-				if ( $remote=="comment_text" )
+				if ( $remote == "comment_text" )
 					$o[$remote] = trim( $this->$local ); // trim the comment text
 				else
 					$o[$remote] = $this->$local;
@@ -808,8 +808,9 @@ Author URI: http://intensedebate.com
 		
 		function queue( $operation ) {
 			$this->operations[] = $operation;
-			// ping right away for MU compatibility
-			if ( stripos( get_bloginfo( 'version' ), "MU" ) >- 1 )
+			
+			// Ping immediately for MU compatibility
+			if ( stripos( get_bloginfo( 'version' ), 'MU' ) !== false )
 				$this->ping();
 				
 			return $operation;
@@ -952,6 +953,7 @@ Author URI: http://intensedebate.com
 
 		// calls named func
 		$result = call_user_func( $fn );
+		id_debug_log( 'Response: ' . print_r( $result, true ) );
 		id_response_render( $result );
 	}
 	
@@ -1027,7 +1029,6 @@ Author URI: http://intensedebate.com
 // http://localhost/wordpress/2.5/?id_action=import&post_id=3&offset=0
 
 	function id_REST_import() {
-		
 		global $wpdb;
 
 		$count = id_param( 'id_count', 100 );
@@ -1039,22 +1040,20 @@ Author URI: http://intensedebate.com
 			id_request_error( 'Start commentid must be positive.' );
 		
 		$start = get_option( 'id_import_comment_id' );
-		
-		if ( $start <= 0 ) {
+		if ( $start <= 0 )
 			id_request_message( 'Import complete.' );
-			return array();
-		}
-
-		$totalCommentCount = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(comment_ID) FROM {$wpdb->comments} c WHERE c.comment_ID >= %d AND c.comment_approved != 'spam'", $min_cid ) );
 		
-		$lqs = $wpdb->prepare( "SELECT * FROM {$wpdb->comments} c WHERE c.comment_ID >= %d AND c.comment_ID <= %d AND c.comment_approved != 'spam' ORDER BY c.comment_ID DESC LIMIT 0, %d", $min_cid, $start, $count );
+		id_debug_log( 'Initiating import response.' );
+		
+		$sql = $wpdb->prepare( "SELECT * FROM {$wpdb->comments} c WHERE c.comment_ID >= %d AND c.comment_ID <= %d AND c.comment_approved != 'spam' ORDER BY c.comment_ID DESC LIMIT %d", $min_cid, $start, $count );
 		$results = $wpdb->get_results( $sql );
 		if ( !count( $results ) ) {
-			id_request_message( 'Import complete.' );
+			id_debug_log( 'No comments to import.' );
 			id_save_option( 'id_signup_step', 3 );
-			return array();
+			id_request_message( 'Import complete.' );
 		}
-
+		
+		// Update each comment to use "external" names
 		$comments = array_map( "id_export_comment", $results );
 		
 		// mark the next comment_id for the next import request
@@ -1064,17 +1063,18 @@ Author URI: http://intensedebate.com
 		$totalRemainingCount = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(comment_ID) FROM {$wpdb->comments} c WHERE c.comment_ID >= {$min_cid} AND c.comment_ID <= {$next_id} AND c.comment_approved != 'spam'", $min_cid, $next_id ) );
 		
 		$result = new stdclass;
-		$result->totalCommentCount = $totalCommentCount;
+		$result->totalCommentCount = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(comment_ID) FROM {$wpdb->comments} c WHERE c.comment_ID >= %d AND c.comment_approved != 'spam'", $min_cid ) );
 		$result->totalRemainingCount = $totalRemainingCount;
 		$result->time_gmt = gmdate( "Y-m-d H:i:s" );
 		$result->time = date( "Y-m-d H:i:s" );
 		$result->success = "true";
 		$result->data = $comments;
+		
 		return $result;
 	}
 	
 	function id_export_comment( $o ) {
-		$c = new id_comment($o);
+		$c = new id_comment( $o );
 		return $c->export();
 	}
 
@@ -1247,7 +1247,7 @@ Author URI: http://intensedebate.com
 	function id_auto_login() {
 		global $userdata;
 		$wp_userID = $userdata->ID;
-		if ( !$wp_userID || get_option('id_auto_login') == 1 )
+		if ( !$wp_userID || get_option( 'id_auto_login' ) == 1 )
 			return false;
 			
 		$appKey = ID_APPKEY;
@@ -2321,7 +2321,7 @@ Author URI: http://intensedebate.com
 				</div>
 				<?php if ( function_exists( 'screen_icon' ) ) screen_icon( 'edit-comments' ); ?>
 				<h2><?php _e( 'Edit Comments', 'intensedebate' ); ?></h2>
-				<iframe frameborder="0" id="id_iframe_moderation" src="<?php echo ID_COMMENT_MODERATION_PAGE . get_option('id_blogID') . "&userid=$userID&time=$curSysTime&authstr=" . md5( $userKey . $curSysTime ); ?>" style="width: 100%; height: 500px; border: none;" onload="addScript()" scrolling="auto"></iframe>
+				<iframe frameborder="0" id="id_iframe_moderation" src="<?php echo ID_COMMENT_MODERATION_PAGE . get_option( 'id_blogID' ) . "&userid=$userID&time=$curSysTime&authstr=" . md5( $userKey . $curSysTime ); ?>" style="width: 100%; height: 500px; border: none;" onload="addScript()" scrolling="auto"></iframe>
 			</div>
 		
 		<script type="text/javascript" src="<?php echo ID_BASEURL ?>/wpPluginNews.php?acctid=<? echo get_option( 'id_blogID' ); ?>"></script>
@@ -2331,10 +2331,10 @@ Author URI: http://intensedebate.com
 			setTimeout("addScript2();", 100);
 		}
 		function addScript2() {
-			var idScript = document.createElement("SCRIPT");
+			var idScript = document.createElement("script");
 			idScript.type = "text/javascript";
 			idScript.src = "<?php echo ID_BASEURL ?>/js/updateWindowHeightForWPPlugin.php?acctid=<?php echo get_option( 'id_blogID' ); ?>";
-			document.getElementsByTagName("HEAD")[0].appendChild(idScript);
+			document.getElementsByTagName("head")[0].appendChild(idScript);
 		}
 		</script>
 		<?php
