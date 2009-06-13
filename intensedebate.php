@@ -3,7 +3,7 @@
 Plugin Name: IntenseDebate
 Plugin URI: http://intensedebate.com/wordpress
 Description: <a href="http://www.intensedebate.com">IntenseDebate Comments</a> enhance and encourage conversation on your blog or website.  Full comment and account data sync between IntenseDebate and WordPress ensures that you will always have your comments.  Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you!  To get started, please activate the plugin and adjust your  <a href="./options-general.php?page=id_settings">IntenseDebate settings</a> .
-Version: 2.1.1
+Version: 2.2
 Author: IntenseDebate & Automattic
 Author URI: http://intensedebate.com
 */
@@ -11,7 +11,7 @@ Author URI: http://intensedebate.com
 // CONSTANTS
 	
 	// This plugin's version 
-	define( 'ID_PLUGIN_VERSION', '2.1.1' );
+	define( 'ID_PLUGIN_VERSION', '2.2' );
 	
 	// API Endpoints
 	define( 'ID_BASEURL', 'http://intensedebate.com' );
@@ -33,30 +33,18 @@ Author URI: http://intensedebate.com
 	define( 'ID_REGISTRATION_PAGE', ID_BASEURL . '/signup' );
 	
 	// Set to true to get a detailed log of operations in your error_log and your DB ( wp_options WHERE option_name='id_debug_log' )
+	// CAUTION: If you enable the debug log (especially on WPMU), be sure to delete that option from the DB when you're done with it.
 	define( 'ID_DEBUG', false );
 	
-	// Get full path to this file
-	if ( defined( 'PLUGINDIR' ) ) {
-		$id_plugin_path = PLUGINDIR;
-	} else if ( defined( 'WP_PLUGIN_DIR' ) ) {
-		$id_plugin_path = WP_PLUGIN_DIR;
-	} else {
-		$id_plugin_path = ABSPATH . 'wp-content/plugins';
-	}
-	if ( substr( $id_plugin_path, -1 ) != '/' ) {
-		$id_plugin_path .= '/';
-	}
-	if ( is_file( $id_plugin_path . 'intensedebate.php' ) ) {
-		define( 'ID_FILE', $id_plugin_path.'intensedebate.php' );
-	} else if ( is_file( $id_plugin_path . 'intensedebate/intensedebate.php' ) ) {
-		define( 'ID_FILE', $id_plugin_path . 'intensedebate/intensedebate.php' );
-	}
-		
+	// You can optionally prevent debug info from being stored in your DB by setting this to true (very good idea on high-traffic sites)
+	define( 'ID_DEBUG_NO_DB', true );
+	
+	// Load textdomain for internationalization
 	load_plugin_textdomain( 'intensedebate' );
 	
 	// inits json decoder/encoder object if not already available
 	if ( !class_exists( 'Services_JSON' ) ) {
-		include_once( 'class.json.php' );
+		include_once( dirname( __FILE__ ) . '/class.json.php' );
 	}
 	
 	// Global var to ensure link wrapper script only outputs once	
@@ -74,16 +62,20 @@ Author URI: http://intensedebate.com
 // Debug logging
 	function id_debug_log( $text ) {
 		if ( defined( 'ID_DEBUG' ) && true === ID_DEBUG ) {
-			$newLogData = get_option( "id_debug_log" ) . "\n\n" . gmdate( "Y-m-d H:i:s" ) . " - $text\n\n";
-			id_save_option( "id_debug_log", substr( $newLogData, max( strlen( $newLogData ) - 1048576, 0 ) ) );
-			error_log($text);
+			if ( !defined( 'ID_DEBUG_NO_DB' ) || false === ID_DEBUG_NO_DB ) {
+				$newLogData = get_option( "id_debug_log" ) . "\n\n" . gmdate( "Y-m-d H:i:s" ) . " - $text\n\n";
+				id_save_option( "id_debug_log", substr( $newLogData, max( strlen( $newLogData ) - 1048576, 0 ) ) );
+			}
+			error_log( $text );
 		}
 	}
 	
 // HOOK ASSIGNMENT
-	function id_activate_hooks() {		
-		// warning that we don't support this version of wordpress
-		if ( false === stripos( get_bloginfo( 'version' ), 'MU' ) && version_compare( get_bloginfo( 'version' ), ID_MIN_WP_VERSION, '<' ) ) {
+	function id_activate_hooks() {
+		global $wpmu_version;
+		
+		// warning that we don't support this version of WordPress
+		if ( empty( $wpmu_version ) && version_compare( get_bloginfo( 'version' ), ID_MIN_WP_VERSION, '<' ) ) {
 			add_action( 'admin_head', 'id_wordpress_version_warning' );
 			return;
 		}
@@ -99,7 +91,10 @@ Author URI: http://intensedebate.com
 		if ( is_admin() ) {
 			// scripts for admin settings page
 			add_action( "admin_head", 'id_settings_head' );
-			wp_enqueue_script( 'id_settings', get_bloginfo( 'wpurl' ) . '/index.php?id_inc=settings_js', array( 'jquery' ) );
+			wp_enqueue_script( 'id_settings', get_bloginfo( 'wpurl' ) . '/index.php?id_inc=settings_js', array( 'jquery' ), false, true );
+			
+			// allow options.php to handle updates in WPMU and future WP versions
+			add_filter( 'whitelist_options', 'id_whitelist_options' );
 		}
 		
 		if ( id_is_active() ) {
@@ -131,9 +126,12 @@ Author URI: http://intensedebate.com
 						
 			// swap out the comment count links
 			add_filter( 'comments_number', 'id_get_comment_number' );
-			add_action( 'wp_footer', 'id_get_comment_footer_script' );
-			add_action( 'admin_footer', 'id_admin_footer' );
-			add_action( 'get_footer', 'id_get_comment_footer_script' );
+			add_action( 'wp_footer', 'id_get_comment_footer_script', 21 );
+			if ( version_compare( get_bloginfo( 'version' ), '2.8', '>=' ) )
+				add_action( 'admin_print_footer_scripts', 'id_admin_footer', 21 );
+			else
+				add_action( 'admin_footer', 'id_admin_footer', 100 );
+			add_action( 'get_footer', 'id_get_comment_footer_script', 100 );
 		}
 		
 		if ( id_is_active() || id_queue_not_empty() ) {
@@ -156,7 +154,7 @@ Author URI: http://intensedebate.com
 					'moderate_comments',
 					'intensedebate',
 					'id_moderate_comments',
-					'../wp-content/plugins/intensedebate/comments.png' // @todo better URL
+					'../wp-content/plugins/intensedebate/comments.png'
 				);
 			} else { // < WP 2.7
 				unset( $menu[20] );
@@ -178,10 +176,15 @@ Author URI: http://intensedebate.com
 		);
 	}
 	
+	function id_whitelist_options( $options ) {
+		$options['intensedebate'] = array( 'id_auto_login', 'id_moderationPage', 'id_useIDComments', 'id_jsCommentLinks', 'id_syncWPComments', 'id_syncWPPosts', 'id_revertMobile' );
+		return $options;
+	}
+	
 	function id_activate() {
 		update_option( 'thread_comments', 1 );
 	}
-	register_activation_hook( ID_FILE, 'id_activate' );
+	register_activation_hook( __FILE__, 'id_activate' );
 	
 	function id_deactivate() {
 		$fields = array(
@@ -193,7 +196,7 @@ Author URI: http://intensedebate.com
 		$op = $queue->add( 'plugin_deactivated', $fields, 'id_generic_callback' );
 		$queue->ping( array( $op ) );
 	}
-	register_deactivation_hook( ID_FILE, 'id_deactivate' );
+	register_deactivation_hook( __FILE__, 'id_deactivate' );
 
 
 // UTILITIES
@@ -261,11 +264,15 @@ Author URI: http://intensedebate.com
 
 	// blog option
 	function id_save_option( $name, $value ) {
-		if ( false === get_option( $name ) ) {
+		global $wpmu_version;
+		
+		if ( false === get_option( $name ) && empty( $wpmu_version ) ) { // Avoid WPMU options cache bug
 			add_option( $name, $value, '', 'no' );
 		} else {
 			update_option( $name, $value );
 		}
+		
+		id_debug_log( 'Save option: ' . $name . ' = ' . print_r( $value, true ) );
 	}
 
 	// user options
@@ -484,7 +491,7 @@ Author URI: http://intensedebate.com
 			}
 		}
 		
-		// registers a property with the object. $localname is the wordpress column
+		// registers a property with the object. $localname is the WordPress column
 		// name and also the internal property name, $remoteName is the ID field name
 		function addProp( $localName, $remoteName = null, $defaultValue = null ) {
 			$remoteName = isset( $remoteName ) ? $remoteName : $localName;
@@ -779,15 +786,15 @@ Author URI: http://intensedebate.com
 		var $queueName = ID_REQUEST_QUEUE_NAME;
 		var $url = ID_SERVICE;
 		var $operations = array();
+		var $needs_save = false;
 
 		function id_queue() {
 			$this->load();
-			//$this->create();
 		}
 
 		function load() {
 			$this->operations = get_option( $this->queueName );
-			if ( $this->operations == false ) {
+			if ( !is_array( $this->operations ) ) {
 				$this->create();
 			}
 		}
@@ -798,7 +805,8 @@ Author URI: http://intensedebate.com
 		}
 		
 		function store() {
-			id_save_option( $this->queueName, $this->operations );
+			if ( $this->needs_save )
+				id_save_option( $this->queueName, $this->operations );
 		}
 		
 		function add( $action, $data, $callback = null ) {
@@ -807,19 +815,15 @@ Author URI: http://intensedebate.com
 		}
 		
 		function queue( $operation ) {
-			$this->operations[] = $operation;
-			
-			// Ping immediately for MU compatibility
-			if ( stripos( get_bloginfo( 'version' ), 'MU' ) !== false )
-				$this->ping();
-				
+			$this->needs_save = true;
+			$this->operations[] = $operation;				
 			return $operation;
 		}
 
 		function ping( $operations = null ) {
 			if ( !$operations )
 				$operations = $this->operations;
-			if ( count( $operations ) === 0 )
+			if ( count( $operations ) == 0 )
 				return;
 			$this->process( $this->send( $operations ) );
 			$this->store();
@@ -841,10 +845,12 @@ Author URI: http://intensedebate.com
 		}
 
 		function process( $rawResults ) {
-			
 			// HTTP request failed?  Leave queue alone and attempt to resend later
 			if ( false == $rawResults )
 				return;
+			
+			// Need to update queue when we're done
+			$this->needs_save = true;
 			
 			// Decode results string
 			$jsonservice = id_get_json_service();
@@ -856,10 +862,8 @@ Author URI: http://intensedebate.com
 			// loop through sent operations and try to resolve results for each
 			$newQueue = array();
 			foreach ( $this->operations as $operation ) {
-
 				$result = $results[$operation->operation_id];
 				if ( isset( $result ) ) {
-					
 					$callback = $operation->callback;
 					if ( isset( $callback ) && function_exists( $callback ) ) {
 						// callback returns true == remove from queue
@@ -878,7 +882,6 @@ Author URI: http://intensedebate.com
 					// no result returned for that operation, requeue
 					$newQueue[] = $operation;
 				}
-
 			}
 			
 			// store new queue
@@ -913,12 +916,8 @@ Author URI: http://intensedebate.com
 	
 	// include handler (css/js)
 	function id_include_handler() {
-		$inc = id_param( 'id_inc' );
-		if ( !$inc )
-			return;
-		$fn = "id_INCLUDE_$inc";
+		$fn = 'id_INCLUDE_' . id_param( 'id_inc' );
 		if ( function_exists( $fn ) ) {
-//			if (class_exists('Debugger')) Debugger::$debug = false;
 			ob_end_clean();
 			return call_user_func( $fn );
 		}
@@ -932,21 +931,23 @@ Author URI: http://intensedebate.com
 
 		// determine requested action
 		$action = id_param( 'id_action' );
+		
 		if ( !$action )
 			return;
-
+		
 		id_debug_log( 'Request for: ' . $action );
-
+		
 		// translated func name
-		$fn = "id_REST_$action";
+		$fn = 'id_REST_' . $action;
 		if ( !function_exists( $fn ) ) {
-			id_request_error( 'Unknown action' );
+			id_debug_log( 'Unknown action requested: ' . $fn );
+			id_request_error( 'Unknown action: ' . $fn );
 			return;
 		}
 
 		// token key
 		$token = id_param( 'id_token' );
-		if ( get_option( 'id_import_token' ) !== $token ) {
+		if ( $token !== get_option( 'id_import_token' ) ) {
 			id_request_error( 'Missing or invalid token' );
 			return;
 		}
@@ -1026,7 +1027,6 @@ Author URI: http://intensedebate.com
 // ACTION: import
 // Gets comments by post_id, includes paging parameters
 // Used to populate ID database right after registration
-// http://localhost/wordpress/2.5/?id_action=import&post_id=3&offset=0
 
 	function id_REST_import() {
 		global $wpdb;
@@ -1086,6 +1086,8 @@ Author URI: http://intensedebate.com
 		
 		if ( empty( $settings ) )
 			return 'false';
+
+		id_debug_log( 'Updating moderation settings: ' . print_r( $settings, true ) );
 		
 		// Decode and UnJSON the settings so we can work with them
 		$settings = rawurldecode( stripslashes( $settings ) );
@@ -1167,7 +1169,6 @@ Author URI: http://intensedebate.com
 
 // ACTION: save_comment
 // Enter a new comment in to the system
-// http://localhost/wordpress/2.5/?id_action=save_comment
 	
 	function id_REST_save_comment() {
 		$rawComment = stripslashes( id_param( 'id_comment_data' ) );
@@ -1182,8 +1183,6 @@ Author URI: http://intensedebate.com
 
 	
 // ACTION: set_comment_status
-// http://wordpress.dev/2.6/?id_token=e6d73f80d00b2c7801d166daa64d43df&id_action=set_comment_status&comment_id=12&status=hold
-// http://localhost/wordpress/2.5/?id_action=set_comment_status&comment_id=123&status=[hold|approve|spam|delete]
 // ***Deleting is apparently done by passing status=delete
 
 	function id_REST_set_comment_status() {
@@ -1195,7 +1194,7 @@ Author URI: http://intensedebate.com
 		// Check if the status is already set, if so, still return true
 		if ( $newStatus == wp_get_comment_status( $comment_id ) )
 			return true;
-		else if ( $newStatus == "delete" && wp_get_comment_status( $comment_id ) == "deleted" ) //handle cases that don't quite line up (delete=deleted and hold=unapproved)
+		else if ( $newStatus == "delete" && wp_get_comment_status( $comment_id ) == "deleted" ) // handle cases that don't quite line up (delete=deleted and hold=unapproved)
 			return true;
 		else if ( $newStatus == "hold" && wp_get_comment_status( $comment_id ) == "unapproved" ) 
 			return true;
@@ -1326,7 +1325,7 @@ Author URI: http://intensedebate.com
 					</label>
 				</p>
 				<p>
-					<a href='#useOpenID' onclick='document.getElementById("useOpenID").style.display="block";'><img src="<?php echo ID_BASEURL ?>/images/icon-openid.png" /> Signed up with OpenID? </a>
+					<a href='#useOpenID' onclick='document.getElementById("useOpenID").style.display="block";'><img src="<?php echo ID_BASEURL ?>/images/icon-openid.png" /><?php _e( 'Signed up with OpenID?', 'intensedebate' ); ?></a>
 				</p>
 				<p style="display:none" id="useOpenID">
 					Unfortunately IntenseDebate and WordPress account syncing with OpenID is currently not directly available.  Please use your IntenseDebate username and user key to sync your account.  You can obtain your username and user key <a href="<?php echo ID_BASEURL ?>/userkey" target="_blank">here</a>.
@@ -1385,7 +1384,7 @@ Author URI: http://intensedebate.com
 		global $userdata;
 		$id_username = id_coalesce( $userdata->id_username );
 
-		if ( version_compare( get_bloginfo('version'), '2.5', '<' ) ) {
+		if ( version_compare( get_bloginfo( 'version' ), '2.5', '<' ) ) {
 			// slightly different layout in older versions
 			?>
 			<fieldset id="intensedebatelogin">
@@ -1528,11 +1527,16 @@ Author URI: http://intensedebate.com
 	
 
 // DISCUSSION SETTINGS PAGE
+
 	/**
 	 * When discussion settings are changed in WP, queue the change over to ID
 	 * as well to keep things in sync.
+	 * 
+	 * @param boolean $merge_moderation_strings Whether or not to request a merging (rather than overwrite) of moderation strings
 	**/
 	function id_discussion_settings_page( $merge_moderation_strings = false ) {
+		global $wpmu_version;
+		
 		if ( ( isset( $_POST['option_page'] ) && 'discussion' == $_POST['option_page'] ) || ( isset( $_POST['page_options'] ) && stristr( $_POST['page_options'], 'comment_moderation' ) ) ) {
 			$settings = array();
 			
@@ -1554,15 +1558,18 @@ Author URI: http://intensedebate.com
 									'require_previously_approved'   => ( '1' == $_POST['comment_whitelist']  ? 'T' : 'F' ),
 									'email_new_comments'            => ( '1' == $_POST['comments_notify']    ? 'T' : 'F' ),
 									'email_requires_moderation'     => ( '1' == $_POST['moderation_notify']  ? 'T' : 'F' ),
-									'show_threads'                  => ( '1' == $_POST['thread_comments']    ? 'T' : 'F' ),
-									'min_links_for_moderations'     => $_POST['comment_max_links'],
+									'min_links_for_moderations'     => (int) $_POST['comment_max_links'],
 								);  
 		
 				// Some custom ones
 				// If Akismet is active here, then send the key so that ID can use it as well
 				if ( get_option( 'wordpress_api_key' ) && is_plugin_active( 'akismet/akismet.php' ) )
 					$settings['akismet'] = get_option( 'wordpress_api_key' );
-		
+				
+				// Need to handle like this to avoid older versions turning threading off
+				if ( version_compare( get_bloginfo( 'version' ), '2.7', '>=' ) )
+					$settings['show_threads'] = ( '1' == $_POST['thread_comments'] ? 'T' : 'F' );
+				
 				// Need to do some parsing to get moderation strings into the same format as ID
 				$mods = id_separate_tokens( $_POST['moderation_keys'] );
 				$settings['moderate_words']     = implode( ' ', $mods['words'] );
@@ -1585,6 +1592,8 @@ Author URI: http://intensedebate.com
 	/**
 	 * Helper function to trigger an update of IntenseDebate options, based
 	 * on what's stored in the database here (WP).
+	 * 
+	 * @param boolean $merge_moderation_strings Whether or not to request a merging (rather than overwrite) of moderation strings
 	**/
 	function id_discussion_sync_from_db( $merge_moderation_strings = false ) {
 		$settings = array(
@@ -1592,8 +1601,7 @@ Author URI: http://intensedebate.com
 							'require_previously_approved'   => ( '1' == get_option( 'comment_whitelist' )  ? 'T' : 'F' ),
 							'email_new_comments'            => ( '1' == get_option( 'comments_notify' )    ? 'T' : 'F' ),
 							'email_requires_moderation'     => ( '1' == get_option( 'moderation_notify' )  ? 'T' : 'F' ),
-							'show_threads'                  => ( '1' == get_option( 'thread_comments' )    ? 'T' : 'F' ),
-							'min_links_for_moderations'     => get_option( 'comment_max_links' ),
+							'min_links_for_moderations'     => (int) get_option( 'comment_max_links' ),
 						);
 
 		// Some custom ones
@@ -1601,6 +1609,10 @@ Author URI: http://intensedebate.com
 		include_once( ABSPATH . '/wp-admin/includes/plugin.php' );
 		if ( get_option( 'wordpress_api_key' ) && is_plugin_active( 'akismet/akismet.php' ) )
 			$settings['akismet'] = get_option( 'wordpress_api_key' );
+
+		// Need to handle like this to avoid older versions turning threading off
+		if ( version_compare( get_bloginfo( 'version' ), '2.7', '>=' ) )
+			$settings['show_threads'] = ( '1' == get_option( 'thread_comments' ) ? 'T' : 'F' );
 
 		// Need to do some parsing to get moderation strings into the same format as ID
 		$mods = id_separate_tokens( get_option( 'moderation_keys' ) );
@@ -1679,7 +1691,7 @@ Author URI: http://intensedebate.com
 // SETTINGS PAGE
 	
 	// js/css for settings page
-	// form validation doesn't work in older versions of wordpress due to jQuery version conflicts
+	// form validation doesn't work in older versions of WordPress due to jQuery version conflicts
 	function id_settings_head() {
 		echo '<link rel="stylesheet" href="' . get_bloginfo( 'wpurl' ) . '/index.php?id_inc=settings_css" type="text/css" />';
 	}
@@ -1699,12 +1711,16 @@ Author URI: http://intensedebate.com
 	
 	// main settings page handler
 	function id_settings_page() {
+		global $wpmu_version;
+		
 		// errors & alerts
 		id_message();
 		
 		// Restart the process of connecting if we don't have a blogKey yet
-		if ( !get_option( 'id_blogKey' ) )
+		if ( !get_option( 'id_blogKey' ) ) {
+			id_debug_log( 'Restarting import due to empty id_blogKey.' );
 			id_save_option( 'id_signup_step', 0 );
+		}
 		?>
 		<div id="id_settings" class="wrap">		
 			<div class="clear"></div>
@@ -2014,16 +2030,21 @@ Author URI: http://intensedebate.com
 				<div style="overflow:hidden;">
 					<form id="id_manual_settings" class="ui-tabs-panel" action="options.php" method="post">
 						<input type="hidden" name="action" value="update" />
-						<input type="hidden" name="page_options" value="id_auto_login,id_moderationPage,id_useIDComments,id_jsCommentLinks,id_syncWPComments,id_syncWPPosts,id_revertMobile" />
-						<?php wp_nonce_field( 'update-options' ); ?>
-									
+						<input type="hidden" name="option_page" value="intensedebate" />
+						<?php
+						if ( version_compare( get_bloginfo( 'version' ), '2.7', '<' ) && empty( $wpmu_version ) )
+							wp_nonce_field( 'update-options' );
+						else
+							wp_nonce_field( 'intensedebate-options' );
+						?>
+						
 						<table class="form-table">
 							<tbody>
 								<tr valign="top">
 									<th scope="row" style="white-space: nowrap;" ><?php _e( 'Comment Links', 'intensedebate' ); ?> <span style="cursor:pointer;" onclick="jQuery('#divCommentLinkInfo').slideToggle();"><img src="<?php echo ID_BASEURL ?>/images1/wp-info.png" /></span></th>
 									<td>
 										<input type="radio" name="id_jsCommentLinks" value="0" <?php if ( get_option( 'id_jsCommentLinks' ) == 0 ) echo "checked"; ?> id="id_jsCommentLinks_0"> <label for="id_jsCommentLinks_0"><?php _e( 'IntenseDebate Enhanced Comment Links', 'intensedebate' ); ?></label> (<a href="<?php echo ID_BASEURL ?>/editacct/<?php echo get_option('id_blogID'); ?>" target="_blank" title="Customize Comment Links"><?php _e( 'Customize Them', 'intensedebate' ); ?></a>)<br />
-										<input type="radio" name="id_jsCommentLinks" value="1" <?php if ( get_option( 'id_jsCommentLinks' ) == 1 ) echo "checked"; ?> id="id_jsCommentLinks_1"> <label for="id_jsCommentLinks_1"><?php _e( 'Wordpress Standard Comment Links', 'intensedebate' ); ?></label>
+										<input type="radio" name="id_jsCommentLinks" value="1" <?php if ( get_option( 'id_jsCommentLinks' ) == 1 ) echo "checked"; ?> id="id_jsCommentLinks_1"> <label for="id_jsCommentLinks_1"><?php _e( 'WordPress Standard Comment Links', 'intensedebate' ); ?></label>
 										<span class="idwp-clear"></span>                            
 										<p id="divCommentLinkInfo" class="hidden"><?php _e( 'Use customized comment link text by enabling IntenseDebate Enhanced Comment Links.  <a href="' . ID_BASEURL . '/faq#li181">Learn more</a> about customizing your comment links.', 'intensedebate' ); ?></p>
 									</td>
@@ -2032,7 +2053,7 @@ Author URI: http://intensedebate.com
 									<th scope="row" style="white-space: nowrap;" ><?php _e( 'Moderation Page', 'intensedebate' ); ?> <span style="cursor:pointer;" onclick="jQuery('#divModPageInfo').slideToggle();"><img src="<?php echo ID_BASEURL ?>/images1/wp-info.png" /></span></th>
 									<td>
 										<input type="radio" name="id_moderationPage" value="0" <?php if ( get_option( 'id_moderationPage' ) == 0 ) echo "checked"; ?> id="id_moderationPage_0"> <label for="id_moderationPage_0"><?php _e( 'IntenseDebate Enhanced Moderation', 'intensedebate' ); ?></label> <br />
-										<input type="radio" name="id_moderationPage" value="1" <?php if ( get_option( 'id_moderationPage' ) == 1 ) echo "checked"; ?> id="id_moderationPage_1"> <label for="id_moderationPage_1"><?php _e( 'Wordpress Standard Moderation', 'intensedebate' ); ?></label> 
+										<input type="radio" name="id_moderationPage" value="1" <?php if ( get_option( 'id_moderationPage' ) == 1 ) echo "checked"; ?> id="id_moderationPage_1"> <label for="id_moderationPage_1"><?php _e( 'WordPress Standard Moderation', 'intensedebate' ); ?></label> 
 										<span class="idwp-clear"></span>                            
 										<p id="divModPageInfo" class="hidden"><?php _e( "Moderate and reply to IntenseDebate comments from your WordPress admin panel using our custom moderation page that mirrors the WordPress page that you're already used to.  The only difference is the extra IntenseDebate zest we've added by including IntenseDebate avatars, reputation points, profile links and all of our other metadata gravy that you'll love.", 'intensedebate' ); ?></p>
 									</td>
@@ -2041,7 +2062,7 @@ Author URI: http://intensedebate.com
 									<th scope="row" style="white-space: nowrap;" ><?php _e( 'Comment System', 'intensedebate' ); ?> <span style="cursor:pointer;" onclick="jQuery('#divCommentSystemInfo').slideToggle();"><img src="<?php echo ID_BASEURL ?>/images1/wp-info.png" /></span></th>
 									<td>
 										<input type="radio" name="id_useIDComments" value="0" <?php if ( get_option( 'id_useIDComments' ) == 0 ) echo "checked"; ?> id="id_useIDComments_0"> <label for="id_useIDComments_0"><?php _e( 'IntenseDebate Enhanced Comments', 'intensedebate' ); ?></label> <br />
-										<input type="radio" name="id_useIDComments" value="1" <?php if ( get_option( 'id_useIDComments' ) == 1 ) echo "checked"; ?> id="id_useIDComments_1"> <label for="id_useIDComments_1"><?php _e( 'Wordpress Standard Comments', 'intensedebate' ); ?></label> 				
+										<input type="radio" name="id_useIDComments" value="1" <?php if ( get_option( 'id_useIDComments' ) == 1 ) echo "checked"; ?> id="id_useIDComments_1"> <label for="id_useIDComments_1"><?php _e( 'WordPress Standard Comments', 'intensedebate' ); ?></label> 				
 										<span class="idwp-clear"></span>                            
 										<p id="divCommentSystemInfo" class="hidden"><?php _e( 'By enabling WordPress Comments you can disable your IntenseDebate Comment system without deactivating the plugin.', 'intensedebate' ); ?></p>			
 									</td>
@@ -2079,7 +2100,7 @@ Author URI: http://intensedebate.com
 										<input type="radio" name="id_revertMobile" value="0" <?php if ( get_option( 'id_revertMobile' ) == 0 ) echo "checked"; ?> id="id_revertMobile_0"> <label for="id_revertMobile_0"><?php _e( 'Revert to WordPress comments for visitors on mobile devices', 'intensedebate' ); ?></label> <br />
 										<input type="radio" name="id_revertMobile" value="1" <?php if ( get_option( 'id_revertMobile' ) == 1 ) echo "checked"; ?> id="id_revertMobile_1"> <label for="id_revertMobile_1"><?php _e( 'Use IntenseDebate comments for visitors on mobile devices', 'intensedebate' ); ?></label>
 										<span class="idwp-clear"></span>                            
-										<p id="divRevertMobileInfo" class="hidden"><?php _e( 'This setting will determine if we show IntenseDebate comments or Wordpress comments when a reader on a mobile device visits your blog.  Because IntenseDebate is not yet fully compatible with all mobile devices, we suggest reverting to the standard WordPress comments when mobile devices access your blog.', 'intensedebate' ); ?></p>
+										<p id="divRevertMobileInfo" class="hidden"><?php _e( 'This setting will determine if we show IntenseDebate comments or WordPress comments when a reader on a mobile device visits your blog.  Because IntenseDebate is not yet fully compatible with all mobile devices, we suggest reverting to the standard WordPress comments when mobile devices access your blog.', 'intensedebate' ); ?></p>
 									</td>
 								</tr>									
 							</tbody>
@@ -2117,7 +2138,7 @@ Author URI: http://intensedebate.com
 	// postback for settings page
 	function id_process_settings_page() {
 		$id_settings_action = 'id_SETTINGS_' . id_param( 'id_settings_action' );
-		if ( $id_settings_action && function_exists( $id_settings_action ) )
+		if ( function_exists( $id_settings_action ) )
 			call_user_func( $id_settings_action );
 	}
 	
@@ -2129,13 +2150,12 @@ Author URI: http://intensedebate.com
 			, 'id_import_comment_id'
 			, 'id_import_post_id'
 			, 'id_import_token'
-			, 'id_request_queue'
 			, 'id_userID'
 			, 'id_userKey'
 			, 'id_comment_template_file'
 			, 'id_jsCommentLinks'
 			, 'id_moderationPage'
-			, 'id_request_queue'
+			, ID_REQUEST_QUEUE_NAME
 			, 'id_syncWPComments'
 			, 'id_syncWPPosts'
 			, 'id_revertMobile'
@@ -2317,14 +2337,11 @@ Author URI: http://intensedebate.com
 		?>
 		
 			<div class="wrap">
-				<div id="intense_debate_news-wrap">
-				</div>
 				<?php if ( function_exists( 'screen_icon' ) ) screen_icon( 'edit-comments' ); ?>
 				<h2><?php _e( 'Edit Comments', 'intensedebate' ); ?></h2>
 				<iframe frameborder="0" id="id_iframe_moderation" src="<?php echo ID_COMMENT_MODERATION_PAGE . get_option( 'id_blogID' ) . "&userid=$userID&time=$curSysTime&authstr=" . md5( $userKey . $curSysTime ); ?>" style="width: 100%; height: 500px; border: none;" onload="addScript()" scrolling="auto"></iframe>
 			</div>
 		
-		<script type="text/javascript" src="<?php echo ID_BASEURL ?>/wpPluginNews.php?acctid=<? echo get_option( 'id_blogID' ); ?>"></script>
 		<script type="text/javascript">		
 		jQuery('#adminmenu a[href=edit-comments.php]').addClass('current');				
 		function addScript() {
@@ -2465,46 +2482,6 @@ Author URI: http://intensedebate.com
 		#id_settings h2 {
 			padding-right: 0;
 			}
-		#intense_debate_news-wrap {
-			float: right;
-			display: inline-block;
-			margin: 15px -260px 15px 0;
-			padding: 0 0 0 10px;
-			position: relative; /* IE6 */
-			}
-		#intense_debate_news {
-			background: #E4F2FD;
-			display: inline-block;
-			float: left;
-			padding: 12px 12px 2px;
-			width: 220px;
-			}
-		#intense_debate_news h3 {
-			margin: 0 0 .5em;
-			}
-		#intense_debate_news h4 {
-			margin: 0 0 .5em;
-			}
-		#intense_debate_news p {
-			margin: 0 0 1em;
-			}
-		#intense_debate_news .id_news_list {
-			margin: 1em 0;
-			padding: 0 0 0 15px;
-			}
-		#intense_debate_news .id_news_list li {
-			margin: 0 0 1em;
-			}
-		#intense_debate_news .id_news_toggle {
-			display: inline-block;
-			float: right;
-			margin: -22px -12px 0 0;
-			position: relative;
-			}
-		#intense_debate_news .id_news_toggle a {
-			font-size: 9px; line-height: 1em;
-			text-decoration: none;
-			}
 
     <!--[if IE]>
 		.idwp-popup {
@@ -2546,29 +2523,10 @@ Author URI: http://intensedebate.com
 	}
 
 	function id_INCLUDE_settings_js() {
-		global $id_plugin_path;
-		
 		$charSet = get_bloginfo( 'charset' );
 		header( "Content-type: text/javascript; charset={$charSet}" );
 		?>
 jQuery(function() {
-	
-	// hide menu item
-	// for some reason this doesn't work in WP 2.3
-	// jQuery('#submenu a[href="options-general.php?page=id_registration"]').parent().hide();
-	// so we have this ugly code instead
-	jQuery("#submenu a").each(function() { 
-		if (jQuery(this).attr('href') == 'options-general.php?page=id_registration') {
-			jQuery(this).parent().hide();
-		} 
-	});
-		
-	// nav links
-// 	jQuery('#id_user_login a[href=#id_email_lookup]').click(function() {
-// 		jQuery('#id_email_lookup').toggleClass('hidden');
-// 		return false;
-// 	});
-
 	jQuery('#id_settings_menu a').click(function(e) {
 		e.preventDefault();
 		jQuery('#id_user_registration, #id_user_login, #id_email_lookup').addClass('hidden');
@@ -2586,44 +2544,16 @@ jQuery(function() {
 		return confirm('<?php _e( 'Are you sure you want to disconnect your WordPress account from  your IntenseDebate account?', 'intensedebate' ); ?>');
 	});
 
-		<?php
-		if ( strlen( get_option( 'id_moderationPage' ) ) > 0 && get_option( 'id_moderationPage' ) == 0 ) {
-		// use the ID comment moderation page
-		?>			
-			jQuery('#adminmenu a[href=edit-comments.php]').attr('id', "id_moderate_comment_link");
-			jQuery('#adminmenu a[href=edit-comments.php]').attr('href', "admin.php?page=intensedebate");
-			jQuery('#favorite-actions a[href=edit-comments.php]').attr('href', "admin.php?page=intensedebate");
-		<?php		
-		}
-		?>
+<?php if ( strlen( get_option( 'id_moderationPage' ) ) > 0 && get_option( 'id_moderationPage' ) == 0 ) : ?>			
+	jQuery('#adminmenu a[href=edit-comments.php]').attr('id', "id_moderate_comment_link");
+	jQuery('#adminmenu a[href=edit-comments.php]').attr('href', "admin.php?page=intensedebate");
+	jQuery('#favorite-actions a[href=edit-comments.php]').attr('href', "admin.php?page=intensedebate");
+<?php endif; ?>
 });
 <?php
-if ( version_compare( get_bloginfo( 'version' ), '2.5', '>=' ) ) {
-?>
-
-// jquery.validate
-/* ignore IE throwing errors when focusing hidden elements */
-(function($){$.extend($.fn,{validate:function(options){if(!this.length){options&&options.debug&&window.console&&console.warn("nothing selected, can't validate, returning nothing");return;}var validator=$.data(this[0],'validator');if(validator){return validator;}validator=new $.validator(options,this[0]);$.data(this[0],'validator',validator);if(validator.settings.onsubmit){this.find("input, button").filter(".cancel").click(function(){validator.cancelSubmit=true;});this.submit(function(event){if(validator.settings.debug)event.preventDefault();function handle(){if(validator.settings.submitHandler){validator.settings.submitHandler.call(validator,validator.currentForm);return false;}return true;}if(validator.cancelSubmit){validator.cancelSubmit=false;return handle();}if(validator.form()){if(validator.pendingRequest){validator.formSubmitted=true;return false;}return handle();}else{validator.focusInvalid();return false;}});}return validator;},valid:function(){if($(this[0]).is('form')){return this.validate().form();}else{var valid=false;var validator=$(this[0].form).validate();this.each(function(){valid|=validator.element(this);});return valid;}},removeAttrs:function(attributes){var result={},$element=this;$.each(attributes.split(/\s/),function(){result[this]=$element.attr(this);$element.removeAttr(this);});return result;},rules:function(command,argument){var element=this[0];if(command){var staticRules=$.data(element.form,'validator').settings.rules;var existingRules=$.validator.staticRules(element);switch(command){case"add":$.extend(existingRules,$.validator.normalizeRule(argument));staticRules[element.name]=existingRules;break;case"remove":if(!argument){delete staticRules[element.name];return existingRules;}var filtered={};$.each(argument.split(/\s/),function(index,method){filtered[method]=existingRules[method];delete existingRules[method];});return filtered;}}var data=$.validator.normalizeRules($.extend({},$.validator.metadataRules(element),$.validator.classRules(element),$.validator.attributeRules(element),$.validator.staticRules(element)),element);if(data.required){var param=data.required;delete data.required;data=$.extend({required:param},data);}return data;},push:function(t){return this.setArray(this.add(t).get());}});$.extend($.expr[":"],{blank:function(a){return!$.trim(a.value);},filled:function(a){return!!$.trim(a.value);},unchecked:function(a){return!a.checked;}});$.format=function(source,params){if(arguments.length==1)return function(){var args=$.makeArray(arguments);args.unshift(source);return $.format.apply(this,args);};if(arguments.length>2&&params.constructor!=Array){params=$.makeArray(arguments).slice(1);}if(params.constructor!=Array){params=[params];}$.each(params,function(i,n){source=source.replace(new RegExp("\\{"+i+"\\}","g"),n);});return source;};$.validator=function(options,form){this.settings=$.extend({},$.validator.defaults,options);this.currentForm=form;this.init();};$.extend($.validator,{defaults:{messages:{},groups:{},rules:{},errorClass:"error",errorElement:"label",focusInvalid:true,errorContainer:$([]),errorLabelContainer:$([]),onsubmit:true,ignore:[],onfocusin:function(element){this.lastActive=element;if(this.settings.focusCleanup&&!this.blockFocusCleanup){this.settings.unhighlight&&this.settings.unhighlight.call(this,element,this.settings.errorClass);this.errorsFor(element).hide();}},onfocusout:function(element){if(!this.checkable(element)&&(element.name in this.submitted||!this.optional(element))){this.element(element);}},onkeyup:function(element){if(element.name in this.submitted||element==this.lastElement){this.element(element);}},onclick:function(element){if(element.name in this.submitted)this.element(element);},highlight:function(element,errorClass){$(element).addClass(errorClass);},unhighlight:function(element,errorClass){$(element).removeClass(errorClass);}},setDefaults:function(settings){$.extend($.validator.defaults,settings);},messages:{required:"This field is required.",remote:"Please fix this field.",email:"Please enter a valid email address.",url:"Please enter a valid URL.",date:"Please enter a valid date.",dateISO:"Please enter a valid date (ISO).",dateDE:"Bitte geben Sie ein g�ltiges Datum ein.",number:"Please enter a valid number.",numberDE:"Bitte geben Sie eine Nummer ein.",digits:"Please enter only digits",creditcard:"Please enter a valid credit card.",equalTo:"Please enter the same value again.",accept:"Please enter a value with a valid extension.",maxlength:$.format("Please enter no more than {0} characters."),minlength:$.format("Please enter at least {0} characters."),rangelength:$.format("Please enter a value between {0} and {1} characters long."),range:$.format("Please enter a value between {0} and {1}."),max:$.format("Please enter a value less than or equal to {0}."),min:$.format("Please enter a value greater than or equal to {0}.")},autoCreateRanges:false,prototype:{init:function(){this.labelContainer=$(this.settings.errorLabelContainer);this.errorContext=this.labelContainer.length&&this.labelContainer||$(this.currentForm);this.containers=$(this.settings.errorContainer).add(this.settings.errorLabelContainer);this.submitted={};this.valueCache={};this.pendingRequest=0;this.pending={};this.invalid={};this.reset();var groups=(this.groups={});$.each(this.settings.groups,function(key,value){$.each(value.split(/\s/),function(index,name){groups[name]=key;});});var rules=this.settings.rules;$.each(rules,function(key,value){rules[key]=$.validator.normalizeRule(value);});function delegate(event){var validator=$.data(this[0].form,"validator");validator.settings["on"+event.type]&&validator.settings["on"+event.type].call(validator,this[0]);}$(this.currentForm).delegate("focusin focusout keyup",":text, :password, :file, select, textarea",delegate).delegate("click",":radio, :checkbox",delegate);},form:function(){this.checkForm();$.extend(this.submitted,this.errorMap);this.invalid=$.extend({},this.errorMap);if(!this.valid())$(this.currentForm).triggerHandler("invalid-form.validate",[this]);this.showErrors();return this.valid();},checkForm:function(){this.prepareForm();for(var i=0,elements=(this.currentElements=this.elements());elements[i];i++){this.check(elements[i]);}return this.valid();},element:function(element){element=this.clean(element);this.lastElement=element;this.prepareElement(element);this.currentElements=$(element);var result=this.check(element);if(result){delete this.invalid[element.name];}else{this.invalid[element.name]=true;}if(!this.numberOfInvalids()){this.toHide.push(this.containers);}this.showErrors();return result;},showErrors:function(errors){if(errors){$.extend(this.errorMap,errors);this.errorList=[];for(var name in errors){this.errorList.push({message:errors[name],element:this.findByName(name)[0]});}this.successList=$.grep(this.successList,function(element){return!(element.name in errors);});}this.settings.showErrors?this.settings.showErrors.call(this,this.errorMap,this.errorList):this.defaultShowErrors();},resetForm:function(){if($.fn.resetForm)$(this.currentForm).resetForm();this.submitted={};this.prepareForm();this.hideErrors();this.elements().removeClass(this.settings.errorClass);},numberOfInvalids:function(){return this.objectLength(this.invalid);},objectLength:function(obj){var count=0;for(var i in obj)count++;return count;},hideErrors:function(){this.addWrapper(this.toHide).hide();},valid:function(){return this.size()==0;},size:function(){return this.errorList.length;},focusInvalid:function(){if(this.settings.focusInvalid){try{$(this.findLastActive()||this.errorList.length&&this.errorList[0].element||[]).filter(":visible").focus();}catch(e){}}},findLastActive:function(){var lastActive=this.lastActive;return lastActive&&$.grep(this.errorList,function(n){return n.element.name==lastActive.name;}).length==1&&lastActive;},elements:function(){var validator=this,rulesCache={};return $([]).add(this.currentForm.elements).filter(":input").not(":submit, :reset, :image, [disabled]").not(this.settings.ignore).filter(function(){!this.name&&validator.settings.debug&&window.console&&console.error("%o has no name assigned",this);if(this.name in rulesCache||!validator.objectLength($(this).rules()))return false;rulesCache[this.name]=true;return true;});},clean:function(selector){return $(selector)[0];},errors:function(){return $(this.settings.errorElement+"."+this.settings.errorClass,this.errorContext);},reset:function(){this.successList=[];this.errorList=[];this.errorMap={};this.toShow=$([]);this.toHide=$([]);this.formSubmitted=false;this.currentElements=$([]);},prepareForm:function(){this.reset();this.toHide=this.errors().push(this.containers);},prepareElement:function(element){this.reset();this.toHide=this.errorsFor(element);},check:function(element){element=this.clean(element);if(this.checkable(element)){element=this.findByName(element.name)[0];}var rules=$(element).rules();var dependencyMismatch=false;for(method in rules){var rule={method:method,parameters:rules[method]};try{var result=$.validator.methods[method].call(this,$.trim(element.value),element,rule.parameters);if(result=="dependency-mismatch"){dependencyMismatch=true;continue;}dependencyMismatch=false;if(result=="pending"){this.toHide=this.toHide.not(this.errorsFor(element));return;}if(!result){this.formatAndAdd(element,rule);return false;}}catch(e){this.settings.debug&&window.console&&console.log("exception occured when checking element "+element.id+", check the '"+rule.method+"' method");throw e;}}if(dependencyMismatch)return;if(this.objectLength(rules))this.successList.push(element);return true;},customMetaMessage:function(element,method){if(!$.metadata)return;var meta=this.settings.meta?$(element).metadata()[this.settings.meta]:$(element).metadata();return meta.messages&&meta.messages[method];},customMessage:function(name,method){var m=this.settings.messages[name];return m&&(m.constructor==String?m:m[method]);},findDefined:function(){for(var i=0;i<arguments.length;i++){if(arguments[i]!==undefined)return arguments[i];}return undefined;},defaultMessage:function(element,method){return this.findDefined(this.customMessage(element.name,method),this.customMetaMessage(element,method),element.title||undefined,$.validator.messages[method],"<strong>Warning: No message defined for "+element.name+"</strong>");},formatAndAdd:function(element,rule){var message=this.defaultMessage(element,rule.method);if(typeof message=="function")message=message.call(this,rule.parameters,element);this.errorList.push({message:message,element:element});this.errorMap[element.name]=message;this.submitted[element.name]=message;},addWrapper:function(toToggle){if(this.settings.wrapper)toToggle.push(toToggle.parents(this.settings.wrapper));return toToggle;},defaultShowErrors:function(){for(var i=0;this.errorList[i];i++){var error=this.errorList[i];this.settings.highlight&&this.settings.highlight.call(this,error.element,this.settings.errorClass);this.showLabel(error.element,error.message);}if(this.errorList.length){this.toShow.push(this.containers);}if(this.settings.success){for(var i=0;this.successList[i];i++){this.showLabel(this.successList[i]);}}if(this.settings.unhighlight){for(var i=0,elements=this.validElements();elements[i];i++){this.settings.unhighlight.call(this,elements[i],this.settings.errorClass);}}this.toHide=this.toHide.not(this.toShow);this.hideErrors();this.addWrapper(this.toShow).show();},validElements:function(){return this.currentElements.not(this.invalidElements());},invalidElements:function(){return $(this.errorList).map(function(){return this.element;});},showLabel:function(element,message){var label=this.errorsFor(element);if(label.length){label.removeClass().addClass(this.settings.errorClass);label.attr("generated")&&label.html(message);}else{label=$("<"+this.settings.errorElement+"/>").attr({"for":this.idOrName(element),generated:true}).addClass(this.settings.errorClass).html(message||"");if(this.settings.wrapper){label=label.hide().show().wrap("<"+this.settings.wrapper+">").parent();}if(!this.labelContainer.append(label).length)this.settings.errorPlacement?this.settings.errorPlacement(label,$(element)):label.insertAfter(element);}if(!message&&this.settings.success){label.text("");typeof this.settings.success=="string"?label.addClass(this.settings.success):this.settings.success(label);}this.toShow.push(label);},errorsFor:function(element){return this.errors().filter("[@for='"+this.idOrName(element)+"']");},idOrName:function(element){return this.groups[element.name]||(this.checkable(element)?element.name:element.id||element.name);},checkable:function(element){return/radio|checkbox/i.test(element.type);},findByName:function(name){var form=this.currentForm;return $(document.getElementsByName(name)).map(function(index,element){return element.form==form&&element.name==name&&element||null;});},getLength:function(value,element){switch(element.nodeName.toLowerCase()){case'select':return $("option:selected",element).length;case'input':if(this.checkable(element))return this.findByName(element.name).filter(':checked').length;}return value.length;},depend:function(param,element){return this.dependTypes[typeof param]?this.dependTypes[typeof param](param,element):true;},dependTypes:{"boolean":function(param,element){return param;},"string":function(param,element){return!!$(param,element.form).length;},"function":function(param,element){return param(element);}},optional:function(element){return!$.validator.methods.required.call(this,$.trim(element.value),element)&&"dependency-mismatch";},startRequest:function(element){if(!this.pending[element.name]){this.pendingRequest++;this.pending[element.name]=true;}},stopRequest:function(element,valid){this.pendingRequest--;if(this.pendingRequest<0)this.pendingRequest=0;delete this.pending[element.name];if(valid&&this.pendingRequest==0&&this.formSubmitted&&this.form()){$(this.currentForm).submit();}},previousValue:function(element){return $.data(element,"previousValue")||$.data(element,"previousValue",previous={old:null,valid:true,message:this.defaultMessage(element,"remote")});}},classRuleSettings:{required:{required:true},email:{email:true},url:{url:true},date:{date:true},dateISO:{dateISO:true},dateDE:{dateDE:true},number:{number:true},numberDE:{numberDE:true},digits:{digits:true},creditcard:{creditcard:true}},addClassRules:function(className,rules){className.constructor==String?this.classRuleSettings[className]=rules:$.extend(this.classRuleSettings,className);},classRules:function(element){var rules={};var classes=$(element).attr('class');classes&&$.each(classes.split(' '),function(){if(this in $.validator.classRuleSettings){$.extend(rules,$.validator.classRuleSettings[this]);}});return rules;},attributeRules:function(element){var rules={};var $element=$(element);for(method in $.validator.methods){var value=$element.attr(method);if(value){rules[method]=value;}}if(rules.maxlength&&/-1|2147483647|524288/.test(rules.maxlength)){delete rules.maxlength;}return rules;},metadataRules:function(element){if(!$.metadata)return{};var meta=$.data(element.form,'validator').settings.meta;return meta?$(element).metadata()[meta]:$(element).metadata();},staticRules:function(element){var rules={};var validator=$.data(element.form,'validator');if(validator.settings.rules){rules=$.validator.normalizeRule(validator.settings.rules[element.name])||{};}return rules;},normalizeRules:function(rules,element){$.each(rules,function(prop,val){if(val===false){delete rules[prop];return;}if(val.param||val.depends){var keepRule=true;switch(typeof val.depends){case"string":keepRule=!!$(val.depends,element.form).length;break;case"function":keepRule=val.depends.call(element,element);break;}if(keepRule){rules[prop]=val.param!==undefined?val.param:true;}else{delete rules[prop];}}});$.each(rules,function(rule,parameter){rules[rule]=$.isFunction(parameter)?parameter(element):parameter;});$.each(['minlength','maxlength','min','max'],function(){if(rules[this]){rules[this]=Number(rules[this]);}});$.each(['rangelength','range'],function(){if(rules[this]){rules[this]=[Number(rules[this][0]),Number(rules[this][1])];}});if($.validator.autoCreateRanges){if(rules.min&&rules.max){rules.range=[rules.min,rules.max];delete rules.min;delete rules.max;}if(rules.minlength&&rules.maxlength){rules.rangelength=[rules.minlength,rules.maxlength];delete rules.minlength;delete rules.maxlength;}}if(rules.messages){delete rules.messages}return rules;},normalizeRule:function(data){if(typeof data=="string"){var transformed={};$.each(data.split(/\s/),function(){transformed[this]=true;});data=transformed;}return data;},addMethod:function(name,method,message){$.validator.methods[name]=method;$.validator.messages[name]=message;if(method.length<3){$.validator.addClassRules(name,$.validator.normalizeRule(name));}},methods:{required:function(value,element,param){if(!this.depend(param,element))return"dependency-mismatch";switch(element.nodeName.toLowerCase()){case'select':var options=$("option:selected",element);return options.length>0&&(element.type=="select-multiple"||($.browser.msie&&!(options[0].attributes['value'].specified)?options[0].text:options[0].value).length>0);case'input':if(this.checkable(element))return this.getLength(value,element)>0;default:return value.length>0;}},remote:function(value,element,param){if(this.optional(element))return"dependency-mismatch";var previous=this.previousValue(element);if(!this.settings.messages[element.name])this.settings.messages[element.name]={};this.settings.messages[element.name].remote=typeof previous.message=="function"?previous.message(value):previous.message;if(previous.old!==value){previous.old=value;var validator=this;this.startRequest(element);var data={};data[element.name]=value;$.ajax({url:param,mode:"abort",port:"validate"+element.name,dataType:"json",data:data,success:function(response){if(!response){var errors={};errors[element.name]=response||validator.defaultMessage(element,"remote");validator.showErrors(errors);}else{var submitted=validator.formSubmitted;validator.prepareElement(element);validator.formSubmitted=submitted;validator.successList.push(element);validator.showErrors();}previous.valid=response;validator.stopRequest(element,response);}});return"pending";}else if(this.pending[element.name]){return"pending";}return previous.valid;},minlength:function(value,element,param){return this.optional(element)||this.getLength(value,element)>=param;},maxlength:function(value,element,param){return this.optional(element)||this.getLength(value,element)<=param;},rangelength:function(value,element,param){var length=this.getLength(value,element);return this.optional(element)||(length>=param[0]&&length<=param[1]);},min:function(value,element,param){return this.optional(element)||value>=param;},max:function(value,element,param){return this.optional(element)||value<=param;},range:function(value,element,param){return this.optional(element)||(value>=param[0]&&value<=param[1]);},email:function(value,element){return this.optional(element)||/^((([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+(\.([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+)*)|((\x22)((((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(([\x01-\x08\x0b\x0c\x0e-\x1f\x7f]|\x21|[\x23-\x5b]|[\x5d-\x7e]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(\\([\x01-\x09\x0b\x0c\x0d-\x7f]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))))*(((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(\x22)))@((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?$/i.test(element.value);},url:function(value,element){return this.optional(element)||/^(https?|ftp):\/\/(((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:)*@)?(((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5]))|((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?)(:\d*)?)(\/((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)+(\/(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*)?)?(\?((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|[\uE000-\uF8FF]|\/|\?)*)?(\#((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|\/|\?)*)?$/i.test(element.value);},date:function(value,element){return this.optional(element)||!/Invalid|NaN/.test(new Date(value));},dateISO:function(value,element){return this.optional(element)||/^\d{4}[\/-]\d{1,2}[\/-]\d{1,2}$/.test(value);},dateDE:function(value,element){return this.optional(element)||/^\d\d?\.\d\d?\.\d\d\d?\d?$/.test(value);},number:function(value,element){return this.optional(element)||/^-?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(value);},numberDE:function(value,element){return this.optional(element)||/^-?(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d+)?$/.test(value);},digits:function(value,element){return this.optional(element)||/^\d+$/.test(value);},creditcard:function(value,element){if(this.optional(element))return"dependency-mismatch";if(/[^0-9-]+/.test(value))return false;var nCheck=0,nDigit=0,bEven=false;value=value.replace(/\D/g,"");for(n=value.length-1;n>=0;n--){var cDigit=value.charAt(n);var nDigit=parseInt(cDigit,10);if(bEven){if((nDigit*=2)>9)nDigit-=9;}nCheck+=nDigit;bEven=!bEven;}return(nCheck%10)==0;},accept:function(value,element,param){param=typeof param=="string"?param:"png|jpe?g|gif";return this.optional(element)||value.match(new RegExp(".("+param+")$","i"));},equalTo:function(value,element,param){return value==$(param).val();}}});})(jQuery);;(function($){var ajax=$.ajax;var pendingRequests={};$.ajax=function(settings){settings=$.extend(settings,$.extend({},$.ajaxSettings,settings));var port=settings.port;if(settings.mode=="abort"){if(pendingRequests[port]){pendingRequests[port].abort();}return(pendingRequests[port]=ajax.apply(this,arguments));}return ajax.apply(this,arguments);};})(jQuery);;(function($){$.each({focus:'focusin',blur:'focusout'},function(original,fix){$.event.special[fix]={setup:function(){if($.browser.msie)return false;this.addEventListener(original,$.event.special[fix].handler,true);},teardown:function(){if($.browser.msie)return false;this.removeEventListener(original,$.event.special[fix].handler,true);},handler:function(e){arguments[0]=$.event.fix(e);arguments[0].type=fix;return $.event.handle.apply(this,arguments);}};});$.extend($.fn,{delegate:function(type,delegate,handler){return this.bind(type,function(event){var target=$(event.target);if(target.is(delegate)){return handler.apply(target,arguments);}});},triggerEvent:function(type,target){return this.triggerHandler(type,[$.event.fix({type:type,target:target})]);}})})(jQuery);
-
-jQuery(function() {
-	// form validation
-	var opts = {errorClass: "invalid"};
-	try {
-		jQuery('form#id_user_login').validate(opts);
-		jQuery('form#id_user_registration').validate(opts);
-		jQuery('form#id_email_lookup').validate(opts);
-	} catch(e) {
-//		console.log('form validation unavailable');
-	}
-});
-		<?php
-		}
 		die();
 	}
 
-// ACTIVATE
-	
-	id_activate_hooks();
 
 	/*  Hook into existing template and inject IntenseDebate comment system 
 	(as well as old system in a noscript tags for browsers w/out JS and crawlers)
@@ -2659,14 +2589,13 @@ jQuery(function() {
 	}
 	
 	function id_get_comment_footer_script() {	
-		global $id_link_wrapper_output;
-		global $id_cur_post;
+		global $id_link_wrapper_output, $id_cur_post;
 		
 		if ( !$id_link_wrapper_output ) {
 			$id_link_wrapper_output = true;
 		
-			if ( strlen( get_option( "id_blogAcct" ) ) > 0 ) {
-				echo "<script src = '" . ID_BASEURL . "/js/wordpressTemplateLinkWrapper2.php?acct=" . get_option( "id_blogAcct" ) . "' type='text/javascript'></script>";
+			if ( get_option( "id_blogAcct" ) ) {
+				echo "<script src='" . ID_BASEURL . "/js/wordpressTemplateLinkWrapper2.php?acct=" . get_option( "id_blogAcct" ) . "' type='text/javascript'></script>";
 			}
 		}
 	}
@@ -2677,5 +2606,10 @@ jQuery(function() {
 		
 		id_get_comment_footer_script();
 	}
+
+
+// ACTIVATE HOOKS
+
+	id_activate_hooks();
 	
 ?>

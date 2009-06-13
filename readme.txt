@@ -2,7 +2,7 @@
 Contributors: IntenseDebate
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation
 Requires at least: 2.5
-Tested up to: 2.7.1
+Tested up to: 2.8
 Stable tag: trunk
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
@@ -53,3 +53,27 @@ Your comments may take several hours to import. The time of your import is depen
 4. First step in the registration process - syncing up your IntenseDebate account with your WordPress blog.
 5. Second step of the registration process - the import to convert all your existing comments into IntenseDebate goodness.
 6. Final step of the registration process - a few helpful links to get you started getting the most out of your new IntenseDebate comment system.
+
+== Changelog ==
+
+= v2.2 =
+* Fixed bug where versions of WP < 2.7 would turn off comment threading when saving Discussion Settings
+* Improved performance of queue system (reduced DB hits)
+* Improved overall compatibility with WPMU (props to Israel S. for contributed code!)
+* Improved debugging/logging options/output
+* Cleaned up/standardized use of constants
+* Improved initial import process
+* Improved security of the options page
+* Fixed WP 2.8 JavaScript compatibility bug
+* Improved syncing of comment moderations
+* Improved translatability
+
+= v2.1.1 =
+* Fixed bug with initial import process introduced in 2.1
+
+= v2.1 =
+* Introduced moderation/discussion settings sync
+* Improved integration of moderation panel
+* Optimized moderation panel to load faster
+* Fixed bug where you were logged out of ID if you saved your WP profile page
+* Moved to WordPress coding style
