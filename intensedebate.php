@@ -91,7 +91,7 @@ Author URI: http://intensedebate.com
 		if ( is_admin() ) {
 			// scripts for admin settings page
 			add_action( "admin_head", 'id_settings_head' );
-			wp_enqueue_script( 'id_settings', get_bloginfo( 'wpurl' ) . '/index.php?id_inc=settings_js', array( 'jquery' ), '20090613', true );
+			wp_enqueue_script( 'id_settings', get_bloginfo( 'wpurl' ) . '/index.php?id_inc=settings_js', array( 'jquery' ), '1', true );
 			
 			// allow options.php to handle updates in WPMU and future WP versions
 			add_filter( 'whitelist_options', 'id_whitelist_options' );
