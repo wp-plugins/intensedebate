@@ -56,6 +56,12 @@ Your comments may take several hours to import. The time of your import is depen
 
 == Changelog ==
 
+= v2.3 =
+* Fixed bug where a blank blog title would prevent authentication with ID
+* Switched to using PHP native json_* functions where available to increase performance
+* Limited size of outgoing requests to speed up comms and avoid maxing out request/response sizes
+* Added tag to error_log info for easier debugging
+
 = v2.2 =
 * Fixed bug where versions of WP < 2.7 would turn off comment threading when saving Discussion Settings
 * Improved performance of queue system (reduced DB hits)

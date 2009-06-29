@@ -3,7 +3,7 @@
 Plugin Name: IntenseDebate
 Plugin URI: http://intensedebate.com/wordpress
 Description: <a href="http://www.intensedebate.com">IntenseDebate Comments</a> enhance and encourage conversation on your blog or website.  Full comment and account data sync between IntenseDebate and WordPress ensures that you will always have your comments.  Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you!  To get started, please activate the plugin and adjust your  <a href="./options-general.php?page=id_settings">IntenseDebate settings</a> .
-Version: 2.2
+Version: 2.3
 Author: IntenseDebate & Automattic
 Author URI: http://intensedebate.com
 */
@@ -11,7 +11,7 @@ Author URI: http://intensedebate.com
 // CONSTANTS
 	
 	// This plugin's version 
-	define( 'ID_PLUGIN_VERSION', '2.2' );
+	define( 'ID_PLUGIN_VERSION', '2.3' );
 	
 	// API Endpoints
 	define( 'ID_BASEURL', 'http://intensedebate.com' );
@@ -26,7 +26,7 @@ Author URI: http://intensedebate.com
 	define( 'ID_APPKEY', 'wpplugin' );
 	
 	// IntenseDebate is not supported (at all) prior to WordPress 2.0
-	define( 'ID_MIN_WP_VERSION', '2.0' );
+	define( 'ID_MIN_WP_VERSION', '2.5' );
 	
 	// URLs for linkage
 	define( 'ID_COMMENT_MODERATION_PAGE', ID_BASEURL . '/wpIframe.php?acctid=' );
@@ -66,7 +66,7 @@ Author URI: http://intensedebate.com
 				$newLogData = get_option( "id_debug_log" ) . "\n\n" . gmdate( "Y-m-d H:i:s" ) . " - $text\n\n";
 				id_save_option( "id_debug_log", substr( $newLogData, max( strlen( $newLogData ) - 1048576, 0 ) ) );
 			}
-			error_log( $text );
+			error_log( 'ID/' . ID_PLUGIN_VERSION . ': ' . $text );
 		}
 	}
 	
@@ -257,9 +257,23 @@ Author URI: http://intensedebate.com
 	function id_get_json_service() {
 		global $id_json_service;
 		if ( !$id_json_service ) {
-			$id_json_service = new Services_JSON();
+			if ( function_exists( 'json_encode' ) )
+				$id_json_service = new id_json();
+			else
+				$id_json_service = new Services_JSON();
 		}
 		return $id_json_service;
+	}
+	
+	// Wrapper to make these functions compatible with the PEAR JSON class.
+	class id_json {
+		function encode( $obj ) {
+			return json_encode( $obj );
+		}
+		
+		function decode( $obj ) {
+			return json_decode( $obj );
+		}
 	}
 
 	// blog option
@@ -833,15 +847,15 @@ Author URI: http://intensedebate.com
 			if ( !$operations )
 				$operations = $this->operations;			
 			
-			$jsonservice = id_get_json_service();
+			$json = id_get_json_service();
 			$fields = array(
 				'appKey' => ID_APPKEY,
 				'blogKey' => get_option( 'id_blogKey' ),
 				'blogid' => get_option( 'id_blogID' ),
-				'operations' => $jsonservice->encode( $operations )
+				'operations' => $json->encode( array_slice( $operations, 0, 10 ) )
 			);
 
-			return id_http_query( $this->url, $fields, 'POST' );
+			return id_http_query( $this->url . '?blogid=' . urlencode( get_option( 'id_blogID' ) ), $fields, 'POST' );
 		}
 
 		function process( $rawResults ) {
@@ -2223,6 +2237,16 @@ Author URI: http://intensedebate.com
 	function id_process_start_import_callback( &$result, &$response, &$operation ) {
 	}
 	
+	function id_get_blog_name() {
+		$str = get_option( 'blogname' );
+		if ( !strlen( $str ) ) {
+			$url = parse_url( get_option( 'siteurl' ) );
+			$url = str_replace( 'www.', '', $url['host'] );
+			$str = sprintf( __( 'WordPress blog at %s', 'intensedebate' ), $url );
+		}
+		return $str;
+	}
+	
 	// login form post-back
 	function id_SETTINGS_user_login() {
 		global $userdata;
@@ -2235,7 +2259,7 @@ Author URI: http://intensedebate.com
 		$fields['admin'] = current_user_can( 'manage_options' );
 		$fields['blog_url'] = get_option( 'siteurl' );
 		$fields['blog_rss'] = get_bloginfo( 'rss_url' );
-		$fields['blog_title'] = get_option( 'blogname' );
+		$fields['blog_title'] = id_get_blog_name();
 		$fields['blog_sitetype'] = "wordpress";
 		$fields['rest_service'] = $fields['blog_url'] . '/index.php?id_action=import'; 
 		$fields['token'] = id_generate_token( $fields );
