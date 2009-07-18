@@ -3,7 +3,7 @@ Contributors: IntenseDebate
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation
 Requires at least: 2.5
 Tested up to: 2.8
-Stable tag: trunk
+Stable tag: 2.3
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
 
