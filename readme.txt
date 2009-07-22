@@ -1,8 +1,8 @@
 === IntenseDebate Comments ===
-Contributors: IntenseDebate
-Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation
+Contributors: IntenseDebate, beaulebens
+Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation, wpmu
 Requires at least: 2.5
-Tested up to: 2.8
+Tested up to: 2.8.1
 Stable tag: 2.3
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
@@ -11,7 +11,7 @@ IntenseDebate comments enhance and encourage conversation on your blog.  Build y
 
 IntenseDebate Comments enhance and encourage conversation on your blog or website. Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you!
 
-Full comment and account data sync between Intense Debate and WordPress ensures that you will always have your comments.
+Full comment and account data sync between Intense Debate and WordPress ensures that you will always have your comments stored locally on your own server.
 
 == Installation ==
 
@@ -55,6 +55,22 @@ Your comments may take several hours to import. The time of your import is depen
 6. Final step of the registration process - a few helpful links to get you started getting the most out of your new IntenseDebate comment system.
 
 == Changelog ==
+
+= v2.4 =
+* Lots of optimizations on when/where to load ID resources (CSS/JS) to improve page load times
+* Switched to inline JS/CSS in the admin to prevent loading the WP engine again
+* Now loading ID comment UI via the script object method, rather than direct <script> inclusion
+* Removed some unnecessary options and just used smart defaults
+* Changed so that there is no backup comments template -- your theme MUST have something available, even if it's very simple
+* Made the option to reset the plugin available before import was completed
+* Added the ability to reset your import any time during the installation process if you're having problems
+* Standardized on no-www for URLs
+* Reversed the order of comment imports (starts oldest first now)
+* Added Ping/Pong for network diagnostics
+* Cleaned up translatable strings and now shipping with a POT file for translations
+* Improved comment count links within wp-admin
+* Updated some screenshots
+* Now using a stable tag, rather than trunk, in the wp.org plugins directory
 
 = v2.3 =
 * Fixed bug where a blank blog title would prevent authentication with ID
