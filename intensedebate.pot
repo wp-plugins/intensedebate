@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: http://wordpress.org/tag/intensedebate\n"
-"POT-Creation-Date: 2009-07-02 17:35+0000\n"
+"POT-Creation-Date: 2009-07-22 18:54+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,297 +16,231 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: intensedebate-comment-template.php:28
-msgid "Please do not load this page directly. Thanks!"
+#: intensedebate-comment-template.php:16
+msgid ""
+"This website uses <a href=\"http://intensedebate.com/\">IntenseDebate "
+"comments</a>, but they are not currently loaded because either your browser "
+"doesn't support JavaScript, or they didn't load fast enough."
 msgstr ""
 
-#: intensedebate-comment-template.php:33
-msgid "This post is password protected. Enter the password to view comments."
+#: intensedebate-comment-template.php:32
+msgid "Loading IntenseDebate Comments..."
 msgstr ""
 
-#: intensedebate-comment-template.php:46
-msgid "No Responses"
-msgstr ""
-
-#: intensedebate-comment-template.php:46
-msgid "One Response"
-msgstr ""
-
-#: intensedebate-comment-template.php:46
-msgid "% Responses"
-msgstr ""
-
-#: intensedebate-comment-template.php:54
-msgid "Your comment is awaiting moderation."
-msgstr ""
-
-#: intensedebate-comment-template.php:74
-msgid "Comments are closed."
-msgstr ""
-
-#: intensedebate-comment-template.php:80
-msgid "Leave a Reply"
-msgstr ""
-
-#: intensedebate-comment-template.php:83
-#, php-format
-msgid "You must be <a href=\"%s\">logged in</a> to post a comment."
-msgstr ""
-
-#: intensedebate-comment-template.php:88
-#, php-format
-msgid "Logged in as %s."
-msgstr ""
-
-#: intensedebate-comment-template.php:88
-msgid "Log out of this account"
-msgstr ""
-
-#: intensedebate-comment-template.php:88
-msgid "Log out &raquo;"
-msgstr ""
-
-#: intensedebate.php:152 intensedebate.php:153 intensedebate.php:162
-#: intensedebate.php:163 intensedebate.php:2609
+#: intensedebate.php:204 intensedebate.php:205 intensedebate.php:214
+#: intensedebate.php:215
 msgid "Comments"
 msgstr ""
 
-#: intensedebate.php:171
-msgid "IntenseDebate Options"
+#: intensedebate.php:223 intensedebate.php:1337
+msgid "IntenseDebate Settings"
 msgstr ""
 
-#. #-#-#-#-#  plugin.pot (PACKAGE VERSION)  #-#-#-#-#
-#. Plugin Name of an extension
-#: intensedebate.php:172
-msgid "IntenseDebate"
-msgstr ""
-
-#: intensedebate.php:1284
+#: intensedebate.php:1297
 #, php-format
 msgid ""
 "The IntenseDebate plugin is enabled but you need to adjust <a href=\"%s"
 "\">your settings</a>."
 msgstr ""
 
-#: intensedebate.php:1295
-msgid "Connect to your IntenseDebate account. Go to your <a href=\""
-msgstr ""
-
-#: intensedebate.php:1306
+#: intensedebate.php:1308
 #, php-format
 msgid ""
-"We're sorry, but the IntenseDebate plugin is not supported for versions of\n"
-"\t\t\tWordPress lower than %s."
+"Connect to your IntenseDebate account. Go to your <a href=\"%s\">WordPress "
+"profile</a> to log in or register."
 msgstr ""
 
-#: intensedebate.php:1328
-msgid "IntenseDebate User Login"
+#: intensedebate.php:1319
+#, php-format
+msgid ""
+"We're sorry, but the IntenseDebate plugin is not supported for versions of "
+"WordPress lower than %s."
 msgstr ""
 
-#: intensedebate.php:1331 intensedebate.php:1408
-msgid "IntenseDebate Login"
-msgstr ""
-
-#: intensedebate.php:1337 intensedebate.php:1369 intensedebate.php:1985
-msgid "Password/User Key"
-msgstr ""
-
-#: intensedebate.php:1342
-msgid "Signed up with OpenID?"
-msgstr ""
-
-#: intensedebate.php:1354
-msgid "IntenseDebate Settings"
-msgstr ""
-
-#: intensedebate.php:1358
+#: intensedebate.php:1341
 msgid "I already have an account"
 msgstr ""
 
-#: intensedebate.php:1359
+#: intensedebate.php:1342
 msgid "I'm a new user"
 msgstr ""
 
-#: intensedebate.php:1365 intensedebate.php:1428
+#: intensedebate.php:1348 intensedebate.php:1388
 msgid "Username"
 msgstr ""
 
-#: intensedebate.php:1383
-msgid "Please signup at"
+#: intensedebate.php:1352 intensedebate.php:2132
+msgid "Password/User Key"
 msgstr ""
 
-#: intensedebate.php:1383
-msgid "and then select the \"I already have an account\" option instead."
+#: intensedebate.php:1366
+#, php-format
+msgid ""
+"Please signup at <a href=\"%s\">IntenseDebate.com</a> and then select the "
+"&quot;I already have an account&quot; option."
 msgstr ""
 
-#: intensedebate.php:1405
-msgid "IntenseDebate Account"
-msgstr ""
-
-#: intensedebate.php:1414
-msgid "IntenseDebate Password"
-msgstr ""
-
-#: intensedebate.php:1419 intensedebate.php:1437
-msgid "Not registered with IntenseDebate yet? <a target=\"_blank\" href=\""
-msgstr ""
-
-#: intensedebate.php:1424 intensedebate.php:1496
+#: intensedebate.php:1384 intensedebate.php:1455
 msgid "User Synchronization"
 msgstr ""
 
-#: intensedebate.php:1432
+#: intensedebate.php:1392
 msgid "Password"
 msgstr ""
 
-#: intensedebate.php:1503
+#: intensedebate.php:1397
+#, php-format
+msgid ""
+"Not registered with IntenseDebate yet? <a target=\"_blank\" href=\"%s\">It's "
+"easy</a>."
+msgstr ""
+
+#: intensedebate.php:1462
 #, php-format
 msgid "Synchronizing as %s"
 msgstr ""
 
-#: intensedebate.php:1504
+#: intensedebate.php:1463
 msgid "Dashboard"
 msgstr ""
 
-#: intensedebate.php:1504
+#: intensedebate.php:1463
 msgid "Edit profile"
 msgstr ""
 
-#: intensedebate.php:1505
+#: intensedebate.php:1464
 msgid "Disconnect from IntenseDebate"
 msgstr ""
 
-#: intensedebate.php:1507
+#: intensedebate.php:1466
+#, php-format
 msgid ""
 "All WordPress comments are now synchronized with the IntenseDebate account "
-"above. <a href=\""
+"above. <a href=\"%s\">Read more here</a>."
 msgstr ""
 
-#: intensedebate.php:1742
-msgid "Note"
+#: intensedebate.php:1840
+msgid ""
+"Are you sure you want to delete all of your settings and reset the "
+"IntenseDebate plugin?"
 msgstr ""
 
-#: intensedebate.php:1742
-msgid "For more customization options please visit your"
+#: intensedebate.php:1843
+msgid ""
+"Are you sure you want to disconnect your WordPress account from your "
+"IntenseDebate account?"
 msgstr ""
 
-#: intensedebate.php:1742
-msgid "blog settings"
+#: intensedebate.php:1886
+#, php-format
+msgid ""
+"<strong>Note:</strong> For more customization options please visit your <a "
+"href=\"%s\">blog settings</a> page"
 msgstr ""
 
-#: intensedebate.php:1742
-msgid "page"
-msgstr ""
-
-#: intensedebate.php:1742
+#: intensedebate.php:1888
 msgid "Settings"
 msgstr ""
 
-#: intensedebate.php:1962
+#: intensedebate.php:2109
 msgid "Login"
 msgstr ""
 
-#: intensedebate.php:1965
+#: intensedebate.php:2112
 msgid "Import"
 msgstr ""
 
-#: intensedebate.php:1968
+#: intensedebate.php:2115
 msgid "Tweak"
 msgstr ""
 
-#: intensedebate.php:1973
+#: intensedebate.php:2120
 msgid "Please login to your IntenseDebate account"
 msgstr ""
 
-#: intensedebate.php:1974
+#: intensedebate.php:2121
 msgid "Don't have an account?"
 msgstr ""
 
-#: intensedebate.php:1974
+#: intensedebate.php:2121
 msgid "Sign up here"
 msgstr ""
 
-#: intensedebate.php:1980
+#: intensedebate.php:2127
 msgid "Email/Username"
 msgstr ""
 
-#: intensedebate.php:1983
+#: intensedebate.php:2130
 msgid ""
 "The email address or username you use for your IntenseDebate.com account."
 msgstr ""
 
-#: intensedebate.php:1988
+#: intensedebate.php:2135
 msgid "Forgot your IntenseDebate password?"
 msgstr ""
 
-#: intensedebate.php:1990
+#: intensedebate.php:2137
+#, php-format
 msgid ""
 "Unfortunately IntenseDebate and WordPress account syncing with OpenID is "
 "currently not directly available.  Please use your IntenseDebate username "
-"and user key to sync your account.  You can obtain your username and user key"
+"and user key to sync your account.  You can obtain your username and user "
+"key <a href=\"%s\" target=\"_blank\">here</a>."
 msgstr ""
 
-#: intensedebate.php:1990
-msgid "here"
-msgstr ""
-
-#: intensedebate.php:1992
+#: intensedebate.php:2139
 msgid "Login to IntenseDebate"
 msgstr ""
 
-#: intensedebate.php:1993 intensedebate.php:2000
+#: intensedebate.php:2140 intensedebate.php:2147
 msgid "Note:"
 msgstr ""
 
-#: intensedebate.php:1993
-msgid "As is the case when installing any plugin, it's always a good idea to"
+#: intensedebate.php:2140
+#, php-format
+msgid ""
+"As is the case when installing any plugin, it's always a good idea to <a "
+"href=\"%s\">backup</a> your blog data before proceeding."
 msgstr ""
 
-#: intensedebate.php:1993
-msgid "backup"
-msgstr ""
-
-#: intensedebate.php:1993
-msgid "your blog data before proceeding."
-msgstr ""
-
-#: intensedebate.php:1996
+#: intensedebate.php:2143
 msgid "Import your WordPress comments into IntenseDebate"
 msgstr ""
 
-#: intensedebate.php:1998
-msgid "Welcome"
+#: intensedebate.php:2145
+#, php-format
+msgid "Welcome %s!"
 msgstr ""
 
-#: intensedebate.php:1998
+#: intensedebate.php:2145
 msgid ""
 "For your old WordPress comments to show up in the plugin, they need to be "
 "imported to give them all the IntenseDebate comment goodness."
 msgstr ""
 
-#: intensedebate.php:1998
+#: intensedebate.php:2145
 msgid "Learn more"
 msgstr ""
 
-#: intensedebate.php:1999
+#: intensedebate.php:2146
 msgid ""
-"The process usually takes a few hours or less, but times may vary depending "
-"on how many comments you're importing. You'll be notified via email when the "
-"import is complete."
+"The process usually takes less than a few hours, but times may vary "
+"depending on how many comments you're importing. You'll be notified via "
+"email when the import is complete."
 msgstr ""
 
-#: intensedebate.php:2000
+#: intensedebate.php:2147
 msgid ""
 "Until your comments are imported they will not show up in the IntenseDebate "
 "comment system.  Don't worry though, your comments are still safe and will "
 "be ready as soon as the import completes."
 msgstr ""
 
-#: intensedebate.php:2004
+#: intensedebate.php:2151
 msgid "Use IntenseDebate's default moderation settings (recommended)"
 msgstr ""
 
-#: intensedebate.php:2005
+#: intensedebate.php:2152
 msgid ""
 "By enabling this option, IntenseDebate will add commonly-abused keywords and "
 "phrases to your moderation settings, so that you can avoid spam in your "
@@ -314,212 +248,121 @@ msgid ""
 "them any more."
 msgstr ""
 
-#: intensedebate.php:2006
+#: intensedebate.php:2153
 msgid "Start Importing Comments"
 msgstr ""
 
-#: intensedebate.php:2006
+#: intensedebate.php:2153
 msgid "Skip Import"
 msgstr ""
 
-#: intensedebate.php:2012
+#: intensedebate.php:2159
 msgid "Import in progress..."
 msgstr ""
 
-#: intensedebate.php:2013
-msgid "An importing error occured. Please"
-msgstr ""
-
-#: intensedebate.php:2013
-msgid "contact us"
-msgstr ""
-
-#: intensedebate.php:2013
-msgid "to get help!"
-msgstr ""
-
-#: intensedebate.php:2020
-msgid "Please note:"
-msgstr ""
-
-#: intensedebate.php:2020
+#: intensedebate.php:2160
+#, php-format
 msgid ""
-"While comments are being imported you might notice some of your comments "
-"appear to be missing from the IntenseDebate comment system. Don't worry "
-"though, your comments will be back as soon as they are imported."
+"An import error occured. Please <a href=\"%s\">contact us</a> to get help!"
 msgstr ""
 
-#: intensedebate.php:2021
+#: intensedebate.php:2167
+msgid ""
+"<strong>Please note:</strong> While comments are being imported you might "
+"notice some of your comments appear to be missing from the IntenseDebate "
+"comment system. Don't worry though, your comments will be back as soon as "
+"they are imported."
+msgstr ""
+
+#: intensedebate.php:2168
 msgid ""
 "The process usually takes a few hours or less, but times may vary depending "
 "on how many comments you're importing. Feel free to go about your business "
 "in the mean time. You'll be notified via email when the import is complete."
 msgstr ""
 
-#: intensedebate.php:2022
-#, php-format
-msgid ""
-"If you're experiencing importing problems you can try to <a href=\"%s/"
-"resetWPImport.php?acctid=%s&blogKey=%s\">restart the import process</a> to "
-"see if that fixes it."
-msgstr ""
-
-#: intensedebate.php:2026
+#: intensedebate.php:2172
 msgid "Success! IntenseDebate is now fully activated on your blog."
 msgstr ""
 
-#: intensedebate.php:2026
+#: intensedebate.php:2172
 msgid "View blog"
 msgstr ""
 
-#: intensedebate.php:2027
+#: intensedebate.php:2173
 msgid "Here are a few other customization options you might want to check out:"
 msgstr ""
 
-#: intensedebate.php:2029
+#: intensedebate.php:2175
 msgid "Edit your blog settings on IntenseDebate.com"
 msgstr ""
 
-#: intensedebate.php:2030
+#: intensedebate.php:2176
 msgid "Customize the comment layout"
 msgstr ""
 
-#: intensedebate.php:2031
+#: intensedebate.php:2177
 msgid "Grab some comment widgets for your blog."
 msgstr ""
 
-#: intensedebate.php:2035
+#: intensedebate.php:2181
 msgid "Close this box"
 msgstr ""
 
-#: intensedebate.php:2058
+#: intensedebate.php:2204
+msgid "Comment Template"
+msgstr ""
+
+#: intensedebate.php:2206
+msgid "IntenseDebate Comment Template"
+msgstr ""
+
+#: intensedebate.php:2207
+msgid "WordPress Comment Template"
+msgstr ""
+
+#: intensedebate.php:2209
+msgid ""
+"If you select to use the WordPress comment template, then we won't load the "
+"IntenseDebate comment system on your blog."
+msgstr ""
+
+#: intensedebate.php:2213
 msgid "Comment Links"
 msgstr ""
 
-#: intensedebate.php:2060
+#: intensedebate.php:2215
 msgid "IntenseDebate Enhanced Comment Links"
 msgstr ""
 
-#: intensedebate.php:2060
-msgid "Customize Them"
+#: intensedebate.php:2215
+msgid "Customize Links"
 msgstr ""
 
-#: intensedebate.php:2061
+#: intensedebate.php:2216
 msgid "WordPress Standard Comment Links"
 msgstr ""
 
-#: intensedebate.php:2063
+#: intensedebate.php:2218
+#, php-format
 msgid ""
 "Use customized comment link text by enabling IntenseDebate Enhanced Comment "
-"Links.  <a href=\""
+"Links.  <a href=\"%s\">Learn more</a> about customizing your comment links."
 msgstr ""
 
-#: intensedebate.php:2067
-msgid "Moderation Page"
-msgstr ""
-
-#: intensedebate.php:2069
-msgid "IntenseDebate Enhanced Moderation"
-msgstr ""
-
-#: intensedebate.php:2070
-msgid "WordPress Standard Moderation"
-msgstr ""
-
-#: intensedebate.php:2072
-msgid ""
-"Moderate and reply to IntenseDebate comments from your WordPress admin panel "
-"using our custom moderation page that mirrors the WordPress page that you're "
-"already used to.  The only difference is the extra IntenseDebate zest we've "
-"added by including IntenseDebate avatars, reputation points, profile links "
-"and all of our other metadata gravy that you'll love."
-msgstr ""
-
-#: intensedebate.php:2076
-msgid "Comment System"
-msgstr ""
-
-#: intensedebate.php:2078
-msgid "IntenseDebate Enhanced Comments"
-msgstr ""
-
-#: intensedebate.php:2079
-msgid "WordPress Standard Comments"
-msgstr ""
-
-#: intensedebate.php:2081
-msgid ""
-"By enabling WordPress Comments you can disable your IntenseDebate Comment "
-"system without deactivating the plugin."
-msgstr ""
-
-#: intensedebate.php:2085
-msgid "Sync WP Comments"
-msgstr ""
-
-#: intensedebate.php:2087 intensedebate.php:2096
-msgid "Sync that data back to IntenseDebate!"
-msgstr ""
-
-#: intensedebate.php:2088 intensedebate.php:2097
-msgid "Let's just sync one-way instead."
-msgstr ""
-
-#: intensedebate.php:2090
-msgid ""
-"IntenseDebate outputs the standard WordPress comments enabling your comments "
-"to still be indexed by search engines that ignore JavaScript, while ensuring "
-"that visitors surfing with JavaScript disabled will be able to interact with "
-"comments made in IntenseDebate.  Readers with JavaScript disabled can still "
-"comment in the original WordPress system.  Syncing your WordPress comments "
-"will import those comments into IntenseDebate, ensuring that every comment "
-"(and trackback/pingback) makes its way into the conversation."
-msgstr ""
-
-#: intensedebate.php:2094
-msgid "Sync WP Post Data"
-msgstr ""
-
-#: intensedebate.php:2099
-msgid ""
-"WordPress admin settings like closing and opening comments on a post, and "
-"changing your post titles, will be automatically recognized and reflected in "
-"your IntenseDebate settings."
-msgstr ""
-
-#: intensedebate.php:2103
-msgid "Auto Login"
-msgstr ""
-
-#: intensedebate.php:2105
-msgid "Automatically log me in to IntenseDebate when possible"
-msgstr ""
-
-#: intensedebate.php:2106
-msgid "Don't automatically log me in to IntenseDebate"
-msgstr ""
-
-#: intensedebate.php:2108
-msgid ""
-"This setting will determine if we attempt to log you (or any users that have "
-"synced a WordPress account to an IntenseDebate account) in to IntenseDebate "
-"automatically when you're signed into your WordPress account.  Note: this "
-"might not work in Safari if third party cookies are not enabled."
-msgstr ""
-
-#: intensedebate.php:2112
+#: intensedebate.php:2222
 msgid "Comments for mobile devices"
 msgstr ""
 
-#: intensedebate.php:2114
+#: intensedebate.php:2224
 msgid "Revert to WordPress comments for visitors on mobile devices"
 msgstr ""
 
-#: intensedebate.php:2115
+#: intensedebate.php:2225
 msgid "Use IntenseDebate comments for visitors on mobile devices"
 msgstr ""
 
-#: intensedebate.php:2117
+#: intensedebate.php:2227
 msgid ""
 "This setting will determine if we show IntenseDebate comments or WordPress "
 "comments when a reader on a mobile device visits your blog.  Because "
@@ -528,37 +371,80 @@ msgid ""
 "access your blog."
 msgstr ""
 
-#: intensedebate.php:2124
+#: intensedebate.php:2231
+msgid "Comment Moderation Page"
+msgstr ""
+
+#: intensedebate.php:2233
+msgid "IntenseDebate Enhanced Moderation"
+msgstr ""
+
+#: intensedebate.php:2234
+msgid "WordPress Standard Moderation"
+msgstr ""
+
+#: intensedebate.php:2236
+msgid ""
+"Moderate and reply to IntenseDebate comments from your WordPress admin panel "
+"using our custom moderation page that mirrors the WordPress page that you're "
+"already used to.  The only difference is the extra IntenseDebate zest we've "
+"added by including IntenseDebate avatars, reputation points, profile links "
+"and all of our other metadata gravy that you'll love."
+msgstr ""
+
+#: intensedebate.php:2241
+msgid "Auto Login"
+msgstr ""
+
+#: intensedebate.php:2243
+#, php-format
+msgid ""
+"Automatically log me in to IntenseDebate when possible (<a href=\"%s"
+"\">Connect your IntenseDebate account to your WordPress profile</a>)"
+msgstr ""
+
+#: intensedebate.php:2244
+msgid "Don't automatically log me in to IntenseDebate"
+msgstr ""
+
+#: intensedebate.php:2246
+msgid ""
+"This setting will determine if we attempt to log you (or any users that have "
+"synced a WordPress account to an IntenseDebate account) in to IntenseDebate "
+"automatically when you're signed into your WordPress account.  Note: this "
+"might not work in Safari if third party cookies are not enabled."
+msgstr ""
+
+#: intensedebate.php:2253
 msgid "Save Changes"
 msgstr ""
 
-#: intensedebate.php:2130
-msgid "Use this button to completely reset the IntenseDebate plugin."
+#: intensedebate.php:2281
+msgid "Click the button below to remove/reset all IntenseDebate settings."
 msgstr ""
 
-#: intensedebate.php:2133
+#: intensedebate.php:2283
 msgid "Reset IntenseDebate Plugin"
 msgstr ""
 
-#: intensedebate.php:2245
+#: intensedebate.php:2285
+#, php-format
+msgid ""
+"If you're experiencing import/sync problems you can <a href=\"%s\">do a "
+"clean import</a> to see if that fixes it (duplicates will be skipped)."
+msgstr ""
+
+#: intensedebate.php:2382
 #, php-format
 msgid "WordPress blog at %s"
 msgstr ""
 
-#: intensedebate.php:2365
+#: intensedebate.php:2500
 msgid "Edit Comments"
 msgstr ""
 
-#: intensedebate.php:2565
-msgid ""
-"Are you sure you want to delete all of your settings and reset the "
-"IntenseDebate plugin?"
-msgstr ""
-
-#: intensedebate.php:2568
-msgid ""
-"Are you sure you want to disconnect your WordPress account from  your "
-"IntenseDebate account?"
+#. Plugin Name of an extension
+msgid "IntenseDebate"
 msgstr ""
 
 #. Plugin URI of an extension
