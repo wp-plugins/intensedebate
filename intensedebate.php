@@ -3,7 +3,7 @@
 Plugin Name: IntenseDebate
 Plugin URI: http://intensedebate.com/wordpress
 Description: <a href="http://www.intensedebate.com">IntenseDebate Comments</a> enhance and encourage conversation on your blog or website.  Full comment and account data sync between IntenseDebate and WordPress ensures that you will always have your comments.  Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you!  To get started, please activate the plugin and adjust your  <a href="./options-general.php?page=id_settings">IntenseDebate settings</a> .
-Version: 2.4
+Version: 2.4.1
 Author: IntenseDebate & Automattic
 Author URI: http://intensedebate.com
 */
@@ -11,7 +11,7 @@ Author URI: http://intensedebate.com
 // CONSTANTS
 	
 	// This plugin's version 
-	define( 'ID_PLUGIN_VERSION', '2.4' );
+	define( 'ID_PLUGIN_VERSION', '2.4.1' );
 	
 	// API Endpoints
 	define( 'ID_BASEURL', 'http://intensedebate.com' );
@@ -38,6 +38,12 @@ Author URI: http://intensedebate.com
 	// You can optionally prevent debug info from being stored in your DB by setting this to true (very good idea on high-traffic sites)
 	// CAUTION: If you enable this option (especially on WPMU), be sure to delete the id_debug_log option from the DB when you're done with it.
 	define( 'ID_DEBUG_NO_DB', true );
+	
+	// Pre WP 2.6 compatibility
+	if ( ! defined( 'WP_CONTENT_URL' ) )
+	    define( 'WP_CONTENT_URL', get_option( 'siteurl' ) . '/wp-content' );
+	if ( ! defined( 'WP_PLUGIN_URL' ) )
+	    define( 'WP_PLUGIN_URL', WP_CONTENT_URL. '/plugins' );
 	
 	// Load textdomain for internationalization
 	load_plugin_textdomain( 'intensedebate' );
@@ -632,10 +638,16 @@ Author URI: http://intensedebate.com
 				return false;	
 			$result = 0;
 			if ( $this->comment_ID ) {
+				if ( empty( $this->comment_date ) && !empty( $this->comment_date_gmt ) )
+					$this->comment_date = get_date_from_gmt( $this->comment_date_gmt );
+					
 				remove_action( 'edit_comment', 'id_save_comment' );
 				$result = wp_update_comment( $this->props() );
 				add_action( 'edit_comment', 'id_save_comment' );
 			} else {
+				if ( empty( $this->comment_date ) && !empty( $this->comment_date_gmt ) )
+					$this->comment_date = get_date_from_gmt( $this->comment_date_gmt );
+				
 				remove_action( 'comment_post', 'id_save_comment' );
 				$result = $this->comment_ID = wp_insert_comment( $this->props() );
 				add_action( 'comment_post', 'id_save_comment' );
@@ -659,9 +671,9 @@ Author URI: http://intensedebate.com
 				$dupe .= $wpdb->prepare( "OR comment_author_email = %s ", $comment_author_email );
 			$dupe .= $wpdb->prepare( ") AND comment_content = %s LIMIT 1", $comment_content );
 
-			if ( $wpdb->get_var( $dupe ) ) {
+			if ( $wpdb->get_var( $dupe ) )
 				return true;
-			}
+			
 			return false;
 		}
 		

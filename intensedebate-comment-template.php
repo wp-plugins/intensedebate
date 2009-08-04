@@ -25,6 +25,7 @@ else :
 	</div>
 	<script type="text/javascript">
 	/* <![CDATA[ */
+	var idc_xd_receiver = '<?php echo str_replace( trailingslashit( get_bloginfo( 'wpurl' ) ), '', WP_PLUGIN_URL ); ?>/intensedebate/xd_receiver.htm';
 	function IDC_revert() { if ( !document.getElementById('IDCommentsHead') ) { document.getElementById('idc-loading-comments').style.display='none'; document.getElementById('idc-noscript').style.display='block'; document.getElementById('idc-comment-wrap-js').parentNode.removeChild(document.getElementById('idc-comment-wrap-js')); } else { document.getElementById('idc-noscript').style.display='none'; } }
 	idc_ns = document.getElementById('idc-noscript');
 	idc_ns.style.display='none'; idc_ld = document.createElement('div');
