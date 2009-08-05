@@ -3,7 +3,7 @@ Contributors: IntenseDebate, beaulebens
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation, wpmu
 Requires at least: 2.5
 Tested up to: 2.8.3
-Stable tag: 2.3
+Stable tag: 2.4.1
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
 
