@@ -2,7 +2,7 @@
 Contributors: IntenseDebate, beaulebens
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation, wpmu
 Requires at least: 2.5
-Tested up to: 2.8.1
+Tested up to: 2.8.3
 Stable tag: 2.3
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
@@ -56,7 +56,7 @@ Your comments may take several hours to import. The time of your import is depen
 
 == Changelog ==
 
-= v2.4 =
+= v2.4.1 =
 * Lots of optimizations on when/where to load ID resources (CSS/JS) to improve page load times
 * Switched to inline JS/CSS in the admin to prevent loading the WP engine again
 * Now loading ID comment UI via the script object method, rather than direct <script> inclusion
@@ -71,6 +71,8 @@ Your comments may take several hours to import. The time of your import is depen
 * Improved comment count links within wp-admin
 * Updated some screenshots
 * Now using a stable tag, rather than trunk, in the wp.org plugins directory
+* Made syncing more flexible when handling different timezones
+* Now packaging Facebook xd_receiver ready for future functionality
 
 = v2.3 =
 * Fixed bug where a blank blog title would prevent authentication with ID
