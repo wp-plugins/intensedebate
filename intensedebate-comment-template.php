@@ -18,11 +18,12 @@ else :
 		// Include your theme's comemnt template
 		if ( is_readable( get_option( "id_comment_template_file" ) ) )
 			include( get_option( "id_comment_template_file" ) );
-
-		// Queue up the comment UI to load once the window is loaded
-		id_postload_js( ID_BASEURL . '/js/wordpressTemplateCommentWrapper2.php?acct=' . get_option( 'id_blogAcct' ) . '&postid=' . $id . '&title=' . urlencode( $post->post_title ) . '&url=' . urlencode( get_permalink( $id ) ) . '&posttime=' . urlencode( $post->post_date_gmt ) . '&postauthor=' . urlencode( get_author_name( $post->post_author ) ) . '&guid=' . urlencode( $post->guid ), 'idc-comment-wrap-js' );
 		?>
 	</div>
+	<?php
+	// Queue up the comment UI to load once the window is loaded
+	id_postload_js( ID_BASEURL . '/js/wordpressTemplateCommentWrapper2.php?acct=' . get_option( 'id_blogAcct' ) . '&postid=' . $id . '&title=' . urlencode( $post->post_title ) . '&url=' . urlencode( get_permalink( $id ) ) . '&posttime=' . urlencode( $post->post_date_gmt ) . '&postauthor=' . urlencode( get_author_name( $post->post_author ) ) . '&guid=' . urlencode( $post->guid ), 'idc-comment-wrap-js' );
+	?>
 	<script type="text/javascript">
 	/* <![CDATA[ */
 	var idc_xd_receiver = '<?php echo str_replace( trailingslashit( get_bloginfo( 'wpurl' ) ), '', WP_PLUGIN_URL ); ?>/intensedebate/xd_receiver.htm';
@@ -32,7 +33,7 @@ else :
 	idc_ld.id = 'idc-loading-comments'; idc_ld.style.verticalAlign='middle';
 	idc_ld.innerHTML = "<img src='<?php echo WP_PLUGIN_URL; ?>/intensedebate/loading.gif' alt='Loading' border='0' align='absmiddle' /> <?php _e( 'Loading IntenseDebate Comments...', 'intensedebate' ); ?>";
 	idc_ns.parentNode.insertBefore(idc_ld, idc_ns);
-	addLoadEvent( function(){setTimeout( IDC_revert, 5000 );} );
+	idc_addLoadEvent( function(){setTimeout( IDC_revert, 5000 );} );
 	/* ]]> */
 	</script>
 <?php

@@ -2564,9 +2564,9 @@ Author URI: http://intensedebate.com
 		<script type="text/javascript">
 		/* <![CDATA[ */
 <?php if ( !$id_addLoadEvent_done ) : ?>
-		if(typeof addLoadEvent!='function'){function addLoadEvent(func){var oldonload=window.onload;if(typeof window.onload!='function'){window.onload=func;}else{window.onload=function(){if(oldonload){oldonload();}func();}}}}
+		if(typeof idc_addLoadEvent!='function'){function idc_addLoadEvent(func){setTimeout(func, 1);}}
 <?php $id_addLoadEvent_done = true; endif; ?>
-		addLoadEvent(function(){ var s = document.createElement("script"); s.type = "text/javascript";<?php echo $id ? " s.id = '" . addslashes( $id ) . "';" : ''; ?> s.src = "<?php echo addslashes( $url ); ?>"; document.getElementsByTagName("head")[0].appendChild(s); });
+		idc_addLoadEvent(function(){ var s = document.createElement("script"); s.type = "text/javascript";<?php echo $id ? " s.id = '" . addslashes( $id ) . "';" : ''; ?> s.src = "<?php echo addslashes( $url ); ?>"; document.getElementsByTagName("head")[0].appendChild(s); });
 		/* ]]> */
 		</script>
 <?php
