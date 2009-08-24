@@ -54,7 +54,6 @@ Author URI: http://intensedebate.com
 	
 	// Global var to ensure link wrapper script only outputs once	
 	$id_link_wrapper_output = false;
-	$id_addLoadEvent_done  = false;
 
 // OVERRIDE MAIL FUNCTIONS
 
@@ -2559,14 +2558,10 @@ Author URI: http://intensedebate.com
 	// Output JS required to load an external script file via safely 
 	// appending an object to the DOM once the rest of the page is loaded.
 	function id_postload_js( $url, $id = false ) {
-		global $id_addLoadEvent_done;
 		?>
 		<script type="text/javascript">
 		/* <![CDATA[ */
-<?php if ( !$id_addLoadEvent_done ) : ?>
-		if(typeof idc_addLoadEvent!='function'){function idc_addLoadEvent(func){setTimeout(func, 1);}}
-<?php $id_addLoadEvent_done = true; endif; ?>
-		idc_addLoadEvent(function(){ var s = document.createElement("script"); s.type = "text/javascript";<?php echo $id ? " s.id = '" . addslashes( $id ) . "';" : ''; ?> s.src = "<?php echo addslashes( $url ); ?>"; document.getElementsByTagName("head")[0].appendChild(s); });
+		var s = document.createElement("script"); s.type = "text/javascript";<?php echo $id ? " s.id = '" . addslashes( $id ) . "';" : ''; ?> s.src = "<?php echo addslashes( $url ); ?>"; document.getElementsByTagName("head")[0].appendChild(s);
 		/* ]]> */
 		</script>
 <?php

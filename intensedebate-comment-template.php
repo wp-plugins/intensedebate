@@ -20,24 +20,23 @@ else :
 			include( get_option( "id_comment_template_file" ) );
 		?>
 	</div>
-	<?php
-	// Queue up the comment UI to load once the window is loaded
-	id_postload_js( ID_BASEURL . '/js/wordpressTemplateCommentWrapper2.php?acct=' . get_option( 'id_blogAcct' ) . '&postid=' . $id . '&title=' . urlencode( $post->post_title ) . '&url=' . urlencode( get_permalink( $id ) ) . '&posttime=' . urlencode( $post->post_date_gmt ) . '&postauthor=' . urlencode( get_author_name( $post->post_author ) ) . '&guid=' . urlencode( $post->guid ), 'idc-comment-wrap-js' );
-	?>
 	<script type="text/javascript">
 	/* <![CDATA[ */
-	var idc_xd_receiver = '<?php echo str_replace( trailingslashit( get_bloginfo( 'wpurl' ) ), '', WP_PLUGIN_URL ); ?>/intensedebate/xd_receiver.htm';
-	function IDC_revert() { if ( !document.getElementById('IDCommentsHead') ) { document.getElementById('idc-loading-comments').style.display='none'; document.getElementById('idc-noscript').style.display='block'; document.getElementById('idc-comment-wrap-js').parentNode.removeChild(document.getElementById('idc-comment-wrap-js')); } else { document.getElementById('idc-noscript').style.display='none'; } }
+	var idc_xd_receiver = '<?php echo str_replace( get_bloginfo( 'siteurl' ), '', WP_PLUGIN_URL ); ?>/intensedebate/xd_receiver.htm';
+	function IDC_revert() { document.getElementById('idc-loading-comments').style.display='none'; if ( !document.getElementById('IDCommentsHead') ) { document.getElementById('idc-noscript').style.display='block'; document.getElementById('idc-comment-wrap-js').parentNode.removeChild(document.getElementById('idc-comment-wrap-js')); } else { document.getElementById('idc-noscript').style.display='none'; } }
 	idc_ns = document.getElementById('idc-noscript');
 	idc_ns.style.display='none'; idc_ld = document.createElement('div');
 	idc_ld.id = 'idc-loading-comments'; idc_ld.style.verticalAlign='middle';
 	idc_ld.innerHTML = "<img src='<?php echo WP_PLUGIN_URL; ?>/intensedebate/loading.gif' alt='Loading' border='0' align='absmiddle' /> <?php _e( 'Loading IntenseDebate Comments...', 'intensedebate' ); ?>";
 	idc_ns.parentNode.insertBefore(idc_ld, idc_ns);
-	idc_addLoadEvent( function(){setTimeout( IDC_revert, 5000 );} );
+	setTimeout( IDC_revert, 5000 );
 	/* ]]> */
 	</script>
 <?php
-endif;
+// Queue up the comment UI to load now that everything else is in place
+id_postload_js( ID_BASEURL . '/js/wordpressTemplateCommentWrapper2.php?acct=' . get_option( 'id_blogAcct' ) . '&postid=' . $id . '&title=' . urlencode( $post->post_title ) . '&url=' . urlencode( get_permalink( $id ) ) . '&posttime=' . urlencode( $post->post_date_gmt ) . '&postauthor=' . urlencode( get_author_name( $post->post_author ) ) . '&guid=' . urlencode( $post->guid ), 'idc-comment-wrap-js' );
+
+endif; // revertMobile
 
 function id_is_mobile() {
 	$op = strtolower($_SERVER['HTTP_X_OPERAMINI_PHONE']);

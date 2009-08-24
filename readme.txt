@@ -2,7 +2,7 @@
 Contributors: IntenseDebate, beaulebens
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation, wpmu
 Requires at least: 2.5
-Tested up to: 2.8.3
+Tested up to: 2.8.4
 Stable tag: 2.4.1
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
@@ -56,7 +56,12 @@ Your comments may take several hours to import. The time of your import is depen
 
 == Changelog ==
 
-= v2.4.1 =
+= 2.5 =
+* Stopped using the onload JS event to load ID because some people had other plugins/widgets that were clobbering it
+* Fixed invalid path on Loading image
+* Changed Facebook xd_receiver path to be root-relative
+
+= 2.4.1 =
 * Lots of optimizations on when/where to load ID resources (CSS/JS) to improve page load times
 * Switched to inline JS/CSS in the admin to prevent loading the WP engine again
 * Now loading ID comment UI via the script object method, rather than direct <script> inclusion
@@ -74,13 +79,13 @@ Your comments may take several hours to import. The time of your import is depen
 * Made syncing more flexible when handling different timezones
 * Now packaging Facebook xd_receiver ready for future functionality
 
-= v2.3 =
+= 2.3 =
 * Fixed bug where a blank blog title would prevent authentication with ID
 * Switched to using PHP native json_* functions where available to increase performance
 * Limited size of outgoing requests to speed up comms and avoid maxing out request/response sizes
 * Added tag to error_log info for easier debugging
 
-= v2.2 =
+= 2.2 =
 * Fixed bug where versions of WP < 2.7 would turn off comment threading when saving Discussion Settings
 * Improved performance of queue system (reduced DB hits)
 * Improved overall compatibility with WPMU (props to Israel S. for contributed code!)
@@ -92,10 +97,10 @@ Your comments may take several hours to import. The time of your import is depen
 * Improved syncing of comment moderations
 * Improved translatability
 
-= v2.1.1 =
+= 2.1.1 =
 * Fixed bug with initial import process introduced in 2.1
 
-= v2.1 =
+= 2.1 =
 * Introduced moderation/discussion settings sync
 * Improved integration of moderation panel
 * Optimized moderation panel to load faster
