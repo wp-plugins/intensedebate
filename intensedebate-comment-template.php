@@ -9,6 +9,8 @@ if ( get_option( 'id_revertMobile' ) == 0 && id_is_mobile() ) :
 else :
 	global $id_cur_post;
 	$id_cur_post = $post;
+	$bits = parse_url( WP_PLUGIN_URL );
+	$xd_base = $bits['path'];
 	id_auto_login();
 ?>
 	<div id='idc-container'></div>
@@ -22,7 +24,7 @@ else :
 	</div>
 	<script type="text/javascript">
 	/* <![CDATA[ */
-	var idc_xd_receiver = '<?php echo str_replace( get_bloginfo( 'siteurl' ), '', WP_PLUGIN_URL ); ?>/intensedebate/xd_receiver.htm';
+	var idc_xd_receiver = '<?php echo $xd_base; ?>/intensedebate/xd_receiver.htm';
 	function IDC_revert() { document.getElementById('idc-loading-comments').style.display='none'; if ( !document.getElementById('IDCommentsHead') ) { document.getElementById('idc-noscript').style.display='block'; document.getElementById('idc-comment-wrap-js').parentNode.removeChild(document.getElementById('idc-comment-wrap-js')); } else { document.getElementById('idc-noscript').style.display='none'; } }
 	idc_ns = document.getElementById('idc-noscript');
 	idc_ns.style.display='none'; idc_ld = document.createElement('div');
