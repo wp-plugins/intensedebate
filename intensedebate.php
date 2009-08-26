@@ -1283,10 +1283,11 @@ Author URI: http://intensedebate.com
 	// user does not need to login to IntenseDebate if they've already logged in here
 	function id_auto_login() {
 		global $userdata;
-		$wp_userID = $userdata->ID;
-		if ( !$wp_userID || get_option( 'id_auto_login' ) == 1 )
+		
+		if ( empty( $userdata->ID ) || get_option( 'id_auto_login' ) == 1 )
 			return false;
-			
+
+		$wp_userID = $userdata->ID;			
 		$appKey = ID_APPKEY;
 		$userID = get_usermeta( $wp_userID, 'id_userID' );
 		$userKey = get_usermeta( $wp_userID, 'id_userKey' );

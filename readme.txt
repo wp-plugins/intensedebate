@@ -56,10 +56,11 @@ Your comments may take several hours to import. The time of your import is depen
 
 == Changelog ==
 
-= 2.5 =
+= 2.4.2 =
 * Stopped using the onload JS event to load ID because some people had other plugins/widgets that were clobbering it
 * Fixed invalid path on Loading image
 * Changed Facebook xd_receiver path to be root-relative
+* Fixed 2 NOTICE errors, props Anilo.
 
 = 2.4.1 =
 * Lots of optimizations on when/where to load ID resources (CSS/JS) to improve page load times
