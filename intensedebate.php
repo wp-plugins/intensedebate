@@ -3,7 +3,7 @@
 Plugin Name: IntenseDebate
 Plugin URI: http://intensedebate.com/wordpress
 Description: <a href="http://www.intensedebate.com">IntenseDebate Comments</a> enhance and encourage conversation on your blog or website.  Full comment and account data sync between IntenseDebate and WordPress ensures that you will always have your comments.  Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you!  To get started, please activate the plugin and adjust your  <a href="./options-general.php?page=id_settings">IntenseDebate settings</a> .
-Version: 2.4.2
+Version: 2.5
 Author: IntenseDebate & Automattic
 Author URI: http://intensedebate.com
 */
@@ -11,7 +11,7 @@ Author URI: http://intensedebate.com
 // CONSTANTS
 	
 	// This plugin's version 
-	define( 'ID_PLUGIN_VERSION', '2.4.2' );
+	define( 'ID_PLUGIN_VERSION', '2.5' );
 	
 	// API Endpoints
 	define( 'ID_BASEURL', 'http://intensedebate.com' );
@@ -101,7 +101,6 @@ Author URI: http://intensedebate.com
 		// IntenseDebate server settings		
 		add_action( 'admin_menu', 'id_menu_items' );
 		add_action( 'init', 'id_process_settings_page' );
-		add_action( 'init', 'id_include_handler' );
 
 		if ( id_do_admin_hooks() ) {
 			// scripts for admin settings page
@@ -171,11 +170,11 @@ Author URI: http://intensedebate.com
 		$basename = basename( $_SERVER['PHP_SELF'] );
 		
 		// ID Comment moderation
-		if ( 'admin.php' == $basename && 'intensedebate' == $_REQUEST['page'] )
+		if ( 'admin.php' == $basename && !empty( $_REQUEST['page'] ) && 'intensedebate' == $_REQUEST['page'] )
 			return true;
 		
 		// ID Settings page
-		if ( 'options-general.php' == $basename && 'id_settings' == $_REQUEST['page'] )
+		if ( 'options-general.php' == $basename && !empty( $_REQUEST['page'] ) && 'id_settings' == $_REQUEST['page'] )
 			return true;
 		
 		// Whitelisted files
@@ -253,7 +252,7 @@ Author URI: http://intensedebate.com
 	// Load Snoopy if WP HTTP isn't here, and Snoopy's not already loaded (< WP 2.7 compat)
 	if ( !function_exists( 'wp_remote_get' ) && !function_exists( 'get_snoopy' ) ) {
 		function get_snoopy() {
-			include_once(ABSPATH.'/wp-includes/class-snoopy.php');
+			include_once( ABSPATH.'/wp-includes/class-snoopy.php' );
 			return new Snoopy;
 		}
 	}
@@ -404,14 +403,6 @@ Author URI: http://intensedebate.com
 		else {
 			return false;
 		}
-	}
-	
-	// Generic request handler
-	function id_remote_api_call( $url, $fields = array(), $method = "GET" ) {
-		$results = "";
-		$fields['appKey'] = ID_APPKEY;
-		$results = id_http_query( $url, $fields, $method );
-		return $results;
 	}
 	
 	// deconstructs query string
@@ -701,7 +692,6 @@ Author URI: http://intensedebate.com
 	class id_post extends id_data_wrapper {
 
 		function id_post( $props = null, $bRemoteLabels = false ) { 
-		
 			$this->addProp( 'ID', 'postid' );
 			$this->addProp( 'post_title', 'title' );
 			$this->addProp( 'guid' );
@@ -855,24 +845,33 @@ Author URI: http://intensedebate.com
 		}
 
 		function ping( $operations = null ) {
-			if ( !$operations )
-				$operations = $this->operations;
-			if ( count( $operations ) == 0 )
-				return;
 			$this->process( $this->send( $operations ) );
 			$this->store();
 		}
 		
 		function send( $operations = null ) {
-			if ( !$operations )
+			if ( null == $operations )
 				$operations = $this->operations;			
 			
 			if ( !count( $operations ) )
 				return false;
+				
+			if ( get_option( 'id_lock_queue' ) && get_option( 'id_lock_queue' ) > time() )
+				return false;
 			
-			// Rebuild comment data if this is an "old" request to avoid weirdness with delayed requests
-			$send = array_slice( $operations, 0, 10 );
-			foreach ( (array) $send as $s => $op ) {
+			// Filter out/limit requests
+			$count = 0;
+			$send = array();
+			$hold = array();
+			foreach ( $operations as $op ) {
+				// Got enough requests for this time?
+				// Sent less than 30s ago?
+				if ( $count >= 10 || ( !empty( $op->running ) && ( time() - $op->running < 30 ) ) ) {
+					$hold[] = $op;
+					continue;
+				}
+				
+				// Refresh comment data for certain requests
 				if ( !empty( $op->action ) 
 					&& in_array( $op->action, array( 'save_comment', 'comment_status' ) ) 
 					&& !empty( $op->data ) 
@@ -884,8 +883,16 @@ Author URI: http://intensedebate.com
 						$op->data = $data;
 				}
 				
-				$send[ $s ] = $op;
+				// Send this one along with a timestamp to avoid doubling up
+				$op->running = time();
+				$send[] = $op;
+				$count++;
 			}
+			
+			// Update queue to save timestamps
+			$this->needs_save = true;
+			$this->operations = array_merge( $hold, $send );
+			$this->store();
 			
 			$fields = array(
 				'appKey' => ID_APPKEY,
@@ -893,7 +900,7 @@ Author URI: http://intensedebate.com
 				'blogid' => get_option( 'id_blogID' ),
 				'operations' => json_encode( $send )
 			);
-
+			
 			return id_http_query( $this->url . '?blogid=' . urlencode( get_option( 'id_blogID' ) ), $fields, 'POST' );
 		}
 
@@ -928,7 +935,6 @@ Author URI: http://intensedebate.com
 							$newQueue[] = $operation;			
 						}
 					}
-					
 				} else {
 					// no result returned for that operation, requeue
 					$newQueue[] = $operation;
@@ -964,16 +970,6 @@ Author URI: http://intensedebate.com
 
 // REST SERVICE FUNCS
 	
-	// include handler (css/js)
-	function id_include_handler() {
-		$fn = 'id_INCLUDE_' . id_param( 'id_inc' );
-		if ( function_exists( $fn ) ) {
-			ob_end_clean();
-			return call_user_func( $fn );
-		}
-	}
-
-	// Main Handler
 	function id_request_handler() {
 		// Blanket protection against accidental access to edit-comments.php
 		if ( 0 == get_option( 'id_moderationPage') && 'edit-comments.php' == basename( $_SERVER['REQUEST_URI'] ) )
@@ -1009,7 +1005,7 @@ Author URI: http://intensedebate.com
 
 		// calls named func
 		$result = call_user_func( $fn );
-		id_debug_log( 'Response: ' . print_r( $result, true ) );
+		//id_debug_log( 'Response: ' . print_r( $result, true ) );
 		id_response_render( $result );
 	}
 	
@@ -1038,41 +1034,45 @@ Author URI: http://intensedebate.com
 	function id_REST_get_comments_by_user() {
 		global $wpdb;
 		
-		$email = id_param( 'id_email' );
-		$postid = id_param( 'id_postid' );
+		$email  = id_param( 'id_email', false );
+		$postid = id_param( 'id_postid', false );
 		
-		if ( strlen( $email ) > 0 )
-			$emailStr = $wpdb->prepare( "c.comment_author_email = %s", $email );
-		else 
-			$emailStr = "true";
+		$where = array();
+		if ( $email )
+			$where[] = $wpdb->prepare( "comment_author_email = %s", $email );
 			
-		if ( strlen( $postid ) > 0 )
-			$postStr = $wpdb->prepare( "c.comment_post_ID = %d", $postid );
-		else 
-			$postStr = "true";
+		if ( $postid )
+			$where[] = $wpdb->prepare( "comment_post_ID = %d", $postid );
 			
-		if ( 'true' == $postStr && 'true' == $emailStr ) {
-			id_request_message( "Invalid params $postid $postStr $email $emailStr" );
-			return array();
-		}
-			
-		$results = $wpdb->get_results( "SELECT * FROM {$wpdb->comments} c WHERE $emailStr AND $postStr ORDER BY c.comment_ID DESC LIMIT 0, 30" );
+		if ( !count( $where ) )
+			id_request_error( "Must supply id_email and optionally id_postid." );
 		
+		$where[] = "comment_approved = 1";
+		$results = $wpdb->get_results( "SELECT * FROM {$wpdb->comments} WHERE " . implode( ' AND ', $where ) . " ORDER BY comment_ID DESC" );
 		if ( !count( $results ) ) {
 			id_request_message( 'No comments' );
 			return array();
 		}
 		
-		$comments = array_map( "id_export_comment", $results );
-		return $comments;
+		return array_map( "id_export_comment", $results );
 	}
 	
 // ACTION: import
-// Gets comments by post_id, includes paging parameters
-// Used to populate ID database right after registration
 
 	function id_REST_import() {
 		global $wpdb;
+		
+		$curr_params = array();
+		$tot_params = array();
+		$remaining_params  = array();
+		
+		$post = id_param( 'id_post_id', false );
+		if ( false != $post ) {
+			$post_where = ' comment_post_ID = %d AND';
+			$curr_params[] = $post;
+			$tot_params[] = $post;
+			$remaining_params[]  = $post;
+		}
 		
 		$current = get_option( 'id_import_comment_id' ); // Defaults to 0
 		if ( $current >= id_get_latest_comment_id() )
@@ -1080,13 +1080,14 @@ Author URI: http://intensedebate.com
 
 		$import_offset = id_param( 'id_start_cid', 0 );
 		if ( $import_offset < 0 )
-			id_request_error( 'Start commentid must be positive.' );
+			id_request_error( 'Start commentid must be a non-negative integer.' );
 		if ( $import_offset > 0 )
-			$current = $import_offset + 1;
+			$current = $import_offset;
 		
 		id_debug_log( "Initiating import response with current = $current" );
 		
-		$sql = $wpdb->prepare( "SELECT * FROM {$wpdb->comments} WHERE comment_ID >= %d AND comment_approved != 'spam' ORDER BY comment_ID ASC LIMIT 100", $current );
+		$curr_params[] = $current;
+		$sql = $wpdb->prepare( "SELECT * FROM {$wpdb->comments} WHERE$post_where comment_ID >= %d AND comment_approved != 'spam' ORDER BY comment_ID ASC LIMIT 100", $curr_params );
 		id_debug_log( $sql );
 		$results = $wpdb->get_results( $sql );
 		if ( !count( $results ) ) {
@@ -1103,12 +1104,14 @@ Author URI: http://intensedebate.com
 		$next_id = max( 0, (int) $comments[$lastCommentIndex]['comment_id'] + 1 );
 		id_save_option( 'id_import_comment_id', $next_id );
 		
-		$result = new stdclass;
-		$result->totalCommentCount = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(comment_ID) FROM {$wpdb->comments} WHERE comment_approved != 'spam'" ) );
-		$result->totalRemainingCount = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(comment_ID) FROM {$wpdb->comments} WHERE comment_ID >= %d AND comment_approved != 'spam'", $next_id ) );
+		$result = new stdClass;
+		$result->totalCommentCount = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(comment_ID) FROM {$wpdb->comments} WHERE$post_where comment_approved != 'spam'", $tot_params ) );
+		$remaining_params[] = $next_id;
+		$result->totalRemainingCount = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(comment_ID) FROM {$wpdb->comments} WHERE$post_where comment_ID >= %d AND comment_approved != 'spam' ORDER BY comment_ID ASC", $remaining_params ) );
 		$result->time_gmt = gmdate( "Y-m-d H:i:s" );
 		$result->time = date( "Y-m-d H:i:s" );
 		$result->success = "true";
+		$result->next_id = $next_id;
 		$result->data = $comments;
 		
 		return $result;
@@ -1118,7 +1121,6 @@ Author URI: http://intensedebate.com
 		$c = new id_comment( $o );
 		return $c->export();
 	}
-
 
 // ACTION: sync moderation settings from ID
 
@@ -1223,7 +1225,7 @@ Author URI: http://intensedebate.com
 
 	
 // ACTION: set_comment_status
-// ***Deleting is apparently done by passing status=delete
+// ***Deleting is done by passing status=delete
 
 	function id_REST_set_comment_status() {
 		$newStatus = id_param( 'status', '' );
@@ -1234,7 +1236,7 @@ Author URI: http://intensedebate.com
 		// Check if the status is already set, if so, still return true
 		if ( $newStatus == wp_get_comment_status( $comment_id ) )
 			return true;
-		else if ( $newStatus == "delete" && wp_get_comment_status( $comment_id ) == "deleted" ) // handle cases that don't quite line up (delete=deleted and hold=unapproved)
+		else if ( $newStatus == "delete" && in_array( wp_get_comment_status( $comment_id ), array( "deleted", "trash" ) ) ) // handle cases that don't quite line up (delete=deleted and hold=unapproved)
 			return true;
 		else if ( $newStatus == "hold" && wp_get_comment_status( $comment_id ) == "unapproved" ) 
 			return true;
@@ -1255,9 +1257,25 @@ Author URI: http://intensedebate.com
 	function id_REST_save_post() {
 		$rawPost = stripslashes( id_param( 'id_post_data' ) );
 		id_debug_log( "Receive Post Status: $rawPost" );
-		$post = new id_post();
-		$post->loadFromRemoteJson( $rawPost );
-		return $post->save();
+		
+		$data = json_decode( $rawPost );
+		if ( !isset( $data->postid ) )
+			return false;
+		
+		// Load current post
+		$post = new id_post( get_post( $data->postid ) );
+		
+		// Replace any incoming values
+		foreach ( $data as $key => $val ) {
+			if ( isset( $post->$key ) ) {
+				$post->$key = $val;
+			}
+		}
+		
+		return array(
+			'success' => $post->save(),
+			'post' => $post->export()
+		);
 	}
 	
 	
@@ -1277,6 +1295,26 @@ Author URI: http://intensedebate.com
 		return $queue->operations;
 	}
 	
+// ACTION: cancel a specific operation
+
+ 	function id_REST_cancel_operation() {
+		$queue = id_get_queue();
+		$queue->load();
+
+		$hash = id_param( 'id_operation_hash', false );
+		if ( !$hash )
+			return array( 'success' => false, 'hash' => $hash, 'operations' => count( $queue->operations ) );
+		
+		$new_ops = array();
+		foreach ( $queue->operations as $operation ) {
+			if ( $hash != $operation->operation_id )
+				$new_ops[] = $operation;
+		}
+		$queue->operations = $new_ops;
+		$queue->needs_save = true;
+		$queue->store();
+		return array( 'success' => true, 'hash' => $hash, 'operations' => count( $new_ops ) );
+	}
 	
 // ACTION: restart import
 
@@ -1296,11 +1334,19 @@ Author URI: http://intensedebate.com
 	
 	function id_REST_get_approved_comment_count() {
 		include_once ABSPATH . '/wp-admin/includes/template.php';
-		if ( isset( $_GET['post_id'] ) )
-			$result = wp_count_comments( $_GET['post_id'] );
+		if ( $p = id_param( 'post_id', 0 ) )
+			$result = wp_count_comments( $p );
 		else
 			$result = wp_count_comments();
 		return $result->approved;
+	}
+	
+// ACTION: Lock queue from sending requests for the next x seconds
+
+	function id_REST_lock_queue() {
+		$lock = id_param( 'id_lock_period', 300 ); // Defaults to 5 mins
+		update_option( 'id_lock_queue', ( time() + $lock ) );
+		return get_option( 'id_lock_queue' );
 	}
 
 // AUTOLOGIN
@@ -1328,7 +1374,7 @@ Author URI: http://intensedebate.com
 	// displays prompt to login on the admin pages if user has not logged into IntenseDebate
 	function id_admin_notices() {
 		// global administrative settings prompt
-		if ( !id_is_active() && $_GET['page'] != 'id_settings' ) {
+		if ( !id_is_active() && !empty( $_GET['page'] ) && $_GET['page'] != 'id_settings' ) {
 			$settingsurl = get_bloginfo( 'wpurl' ) . '/wp-admin/options-general.php?page=id_settings';
 			?>
 			<div class="updated fade-ff0000">
@@ -1339,7 +1385,7 @@ Author URI: http://intensedebate.com
 		}
 		
 		// user profile settings prompt
-		if ( !id_user_connected() && $_GET['page'] != 'id_settings' && $_GET['page'] != 'id_registration' ) {
+		if ( !id_user_connected() && !empty( $_GET['page'] ) && $_GET['page'] != 'id_settings' && $_GET['page'] != 'id_registration' ) {
 			$profileurl = get_bloginfo( 'wpurl' ) . '/wp-admin/profile.php#intensedebatelogin';
 			?>
 			<div class="updated fade-ff0000">
@@ -1370,53 +1416,7 @@ Author URI: http://intensedebate.com
 	
 	
 // PROFILE PAGE
-	
-	// multiple panel display on user profile, trying to avoid this
-	function _id_show_user_profile() {
-
-		global $userdata;
-		$id_username = id_coalesce( $userdata->id_username );
-		$id_email = id_coalesce( $userdata->id_email );
-		$id_displayname = id_coalesce( $userdata->id_displayname );
-
-		?>
-		<div id="id_settings">
-			<h2><a name="intensedebatelogin"><?php _e( 'IntenseDebate Settings', 'intensedebate' ); ?></a></h2>
-			<span style="display: block; clear: both;"></span>
-			
-			<ol id="id_settings_menu">
-				<li><a href="#id_user_login"><?php _e( 'I already have an account', 'intensedebate' ); ?></a></li>
-				<li><a href="#id_user_registration"><?php _e( "I'm a new user", 'intensedebate' ); ?></a></li>
-			</ol>
-			
-			<table class="form-table hidden" id="id_user_login">
-				<tbody>
-					<tr>
-						<th><label for="id_login_username"><?php _e( 'Username', 'intensedebate' ); ?></label></th>
-						<td><input type="text" id="id_login_username" name="id_login_username" value="<?php echo $id_username; ?>" /></td>
-					</tr>
-					<tr>
-						<th><label for="id_login_password"><?php _e( 'Password/User Key', 'intensedebate' ); ?></label></th>
-						<td><input type="password" id="id_login_password" class="required" name="id_login_password" value="" /><a style="text-decoration: none" href='#useOpenID' onclick='document.getElementById("useOpenID").style.display="block";'><img style="padding-left:5px; padding-right:2px" src="<?php echo ID_BASEURL ?>/images/icon-openid.png" /> Signed up with OpenID? </a></td>
-					</tr>
-					<tr>
-						<td>								
-						</td>
-						<td>
-							<span style="display:none" id="useOpenID">Unfortunately IntenseDebate and WordPress account syncing with OpenID is currently not directly available.  Please use your IntenseDebate username and user key to sync your account.  You can obtain your username and user key <a href="<?php echo ID_BASEURL ?>/userkey" target="_blank">here</a>.</span>
-						</td>
-					</tr>
-				</tbody>
-			</table>
-
-			<div id="id_user_registration">
-				<?php printf( __( 'Please signup at <a href="%s">IntenseDebate.com</a> and then select the &quot;I already have an account&quot; option.', 'intensedebate' ), ID_REGISTRATION_PAGE ); ?>
-			</div>			
-		</div>
-		<?php
-	}
-	
-	
+		
 	function id_show_user_profile() {
 		if ( id_user_connected() ) {
 			id_show_user_disconnect();
@@ -1900,18 +1900,6 @@ Author URI: http://intensedebate.com
 		</script>
 		<?php
 	}
-		
-	// checks to see if this blog already exists, stores blogID and blogAcct if found
-	function id_blog_detection() {
-		$fields = array( 'url' => get_option( 'siteurl' ) );
-		$json = id_remote_api_call( ID_BLOG_LOOKUP_SERVICE, $fields );
-		$o = json_decode( $json );
-		if ( $o->resultCount == 1 ) {
-			$row = $o->data[0];
-			id_save_option( 'id_blogID', $row->id );
-			id_save_option( 'id_blogAcct', $row->acct );
-		}
-	}
 	
 	// main settings page handler
 	function id_settings_page() {
@@ -2360,6 +2348,8 @@ Author URI: http://intensedebate.com
 			, 'id_hideSettingsTop'
 			, 'id_signup_step'
 			, 'id_auto_login'
+			, 'id_lock_queue'
+			
 		);
 		foreach ( $settings as $setting ) {
 			delete_option( $setting );
