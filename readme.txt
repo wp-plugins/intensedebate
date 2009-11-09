@@ -1,5 +1,5 @@
 === IntenseDebate Comments ===
-Contributors: IntenseDebate, beaulebens
+Contributors: IntenseDebate, Automattic, beaulebens
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation, wpmu
 Requires at least: 2.5
 Tested up to: 2.8.4
@@ -55,6 +55,17 @@ Your comments may take several hours to import. The time of your import is depen
 6. Final step of the registration process - a few helpful links to get you started getting the most out of your new IntenseDebate comment system.
 
 == Changelog ==
+
+= 2.5 =
+* Adjusted sync queue handling to handle bigger queues more reliably
+* Removed DB logging entirely
+* Added some API functions: get comment counts per post/total, get total approved comments, remotely retrieve queue, remotely cancel an operation, ability to lock queue temporarily
+* Load comment details right before sync to avoid stale information syncing
+* Improve duplicate comment handling
+* Improve comment status syncing
+* Fix bug in handling comments being enabled/disabled on a Post/Page
+* Throttling on the number of outgoing requests to reduce loads on both ends of the system
+* Ability to import a single Post/Page's comments
 
 = 2.4.2 =
 * Stopped using the onload JS event to load ID because some people had other plugins/widgets that were clobbering it
