@@ -1065,11 +1065,11 @@ Author URI: http://intensedebate.com
 		$curr_params = array();
 		$tot_params = array();
 		$remaining_params  = array();
+		$post_where = '';
 		
 		$post = id_param( 'id_post_id', false );
 		if ( false != $post ) {
-			$post_where = ' comment_post_ID = %d AND';
-			$curr_params[] = $post;
+			$post_where = ' comment_post_ID = ' . (int) $post . ' AND';
 			$tot_params[] = $post;
 			$remaining_params[]  = $post;
 		}
@@ -1086,8 +1086,7 @@ Author URI: http://intensedebate.com
 		
 		id_debug_log( "Initiating import response with current = $current" );
 		
-		$curr_params[] = $current;
-		$sql = $wpdb->prepare( "SELECT * FROM {$wpdb->comments} WHERE$post_where comment_ID >= %d AND comment_approved != 'spam' ORDER BY comment_ID ASC LIMIT 100", $curr_params );
+		$sql = "SELECT * FROM {$wpdb->comments} WHERE$post_where comment_ID >= " . (int) $current . " AND comment_approved != 'spam' ORDER BY comment_ID ASC LIMIT 100";
 		id_debug_log( $sql );
 		$results = $wpdb->get_results( $sql );
 		if ( !count( $results ) ) {
