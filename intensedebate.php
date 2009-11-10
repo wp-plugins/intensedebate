@@ -971,6 +971,8 @@ Author URI: http://intensedebate.com
 // REST SERVICE FUNCS
 	
 	function id_request_handler() {
+		global $wpmu_version;
+		
 		// Blanket protection against accidental access to edit-comments.php
 		if ( 0 == get_option( 'id_moderationPage') && 'edit-comments.php' == basename( $_SERVER['REQUEST_URI'] ) )
 			wp_redirect( get_bloginfo( 'wpurl' ) . '/wp-admin/admin.php?page=intensedebate' );
@@ -982,11 +984,6 @@ Author URI: http://intensedebate.com
 			return;
 		
 		id_debug_log( 'Request for: ' . $action );
-		
-		// Ping/Pong function for diagnostics only, no auth required
-		if ( 'ping' == $action ) {
-			id_response_render( 'pong' );
-		}
 		
 		// translated func name
 		$fn = 'id_REST_' . $action;
@@ -1029,6 +1026,10 @@ Author URI: http://intensedebate.com
 		$charSet = get_bloginfo( 'charset' );
 		header( "Content-Type: {$contentType}; charset={$charSet}" );
 		die( json_encode( $result ) );
+	}
+	
+	function id_REST_ping() {
+		return array( 'id_plugin_version' => ID_PLUGIN_VERSION, 'wp_version' => ( !empty( $wpmu_version ) ? 'WPMU/' : '' ) . get_bloginfo( 'version' ) );
 	}
 	
 	function id_REST_get_comments_by_user() {
