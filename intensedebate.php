@@ -138,6 +138,8 @@ Author URI: http://intensedebate.com
 			add_action( 'save_post', 'id_save_post' );
 			add_action( 'delete_post', 'id_delete_post' );
 			add_action( 'wp_set_comment_status', 'id_comment_status', 10, 2 );
+			add_action( 'trashed_comment', 'id_comment_trashed', 10 );
+			add_action( 'untrashed_comment', 'id_comment_untrashed', 10 );
 
 			// individual registration
 			add_action( 'show_user_profile', 'id_show_user_profile' );
@@ -462,6 +464,16 @@ Author URI: http://intensedebate.com
 			$queue = id_get_queue();
 			$queue->add( 'save_comment', $comment->export(), 'id_generic_callback' );
 		}
+	}
+	
+	// Trash in WP == delete on ID
+	function id_comment_trashed( $comment_id ) {
+		id_comment_status( $comment_id, 'delete' );
+	}
+	
+	// Untrash on WP == new comment on ID
+	function id_comment_untrashed( $comment_id ) {
+		id_save_comment( $comment_id );
 	}
 	
 	// don't save the revisions

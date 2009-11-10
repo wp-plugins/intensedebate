@@ -66,6 +66,7 @@ Your comments may take several hours to import. The time of your import is depen
 * Fix bug in handling comments being enabled/disabled on a Post/Page
 * Throttling on the number of outgoing requests to reduce loads on both ends of the system
 * Ability to import a single Post/Page's comments
+* Added support for Trash feature in WP 2.9+
 
 = 2.4.2 =
 * Stopped using the onload JS event to load ID because some people had other plugins/widgets that were clobbering it
