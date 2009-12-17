@@ -495,7 +495,7 @@ Author URI: http://intensedebate.com
 	}
 
 	// callbacks return true to remove from queue
-	function id_generic_callback( &$result, &$response, &$operation ) {
+	function id_generic_callback( $result, $response, $operation ) {
 		$args = func_get_args();
 		if ( $result ) return true;
 		if ( $response['attempt_retry'] ) return false;
@@ -2372,11 +2372,11 @@ Author URI: http://intensedebate.com
 		id_clear_blog_settings();
 		
 		global $wpdb;
-		$users = $wpdb->get_results( "SELECT * FROM $wpdb->users" );
+		$users = get_users_of_blog();
 		$meta = array( 'id_username', 'id_userID', 'id_userKey' );
 		foreach ( $users as $user ) {
 			foreach ( $meta as $key ) {
-				delete_usermeta( $user->ID, $key );
+				delete_usermeta( $user->user_id, $key );
 			}
 		}
 
