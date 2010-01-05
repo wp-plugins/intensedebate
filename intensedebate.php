@@ -938,7 +938,7 @@ Author URI: http://intensedebate.com
 					if ( isset( $operation->callback ) && function_exists( $operation->callback ) ) {
 						// callback returns true == remove from queue
 						// callback returns false == add back to queue
-						$finished = call_user_func_array( $operation->callback, array( "result" => $result->result, "response" => $result->response, "operation" => $operation ) );
+						$finished = call_user_func_array( $operation->callback, array( "result" => &$result->result, "response" => &$result->response, "operation" => &$operation ) );
 						
 						$operation->success = $finished;
 						$operation->response = $result->response;
