@@ -45,7 +45,7 @@ Author URI: http://intensedebate.com
 	load_plugin_textdomain( 'intensedebate' );
 	
 	// Loads JSON lib if we don't have native support
-	if ( !function_exists( 'json_encode' ) && !class_exists( 'Services_JSON' ) )
+	if ( !function_exists( 'json_encode' ) && !class_exists( 'Services_JSON' ) && version_compare( get_bloginfo( 'version' ), '2.9', '<' ) )
 		include_once( dirname( __FILE__ ) . '/class.json.php' );
 	
 	// Global var to ensure link wrapper script only outputs once	
