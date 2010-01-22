@@ -56,7 +56,7 @@ Your comments may take several hours to import. The time of your import is depen
 
 == Changelog ==
 
-= 2.5.1 =
+= 2.6 =
 * Fixed pass-by-reference bug for PHP 5.3, props Maciek P
 * Minor modification to the way JSON-compat functions are loaded to work better with WP 2.9
 
