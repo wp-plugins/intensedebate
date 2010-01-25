@@ -2,7 +2,7 @@
 Contributors: IntenseDebate, Automattic, beaulebens
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation, wpmu
 Requires at least: 2.5
-Tested up to: 2.9
+Tested up to: 2.9.1
 Stable tag: 2.5
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
@@ -58,7 +58,7 @@ Your comments may take several hours to import. The time of your import is depen
 
 = 2.6 =
 * Fixed pass-by-reference bug for PHP 5.3, props Maciek P
-* Minor modification to the way JSON-compat functions are loaded to work better with WP 2.9
+* Minor modification to the way JSON-compat functions are loaded to work better with WP 2.9 under certain conditions
 
 = 2.5 =
 * Adjusted sync queue handling to handle bigger queues more reliably
