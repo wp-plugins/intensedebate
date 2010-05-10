@@ -3,7 +3,7 @@ Contributors: IntenseDebate, Automattic, beaulebens
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation, wpmu
 Requires at least: 2.5
 Tested up to: 2.9.2
-Stable tag: 2.7
+Stable tag: 2.8
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
 
@@ -65,6 +65,9 @@ Your comments may take several hours to import. The time of your import is depen
 6. Final step of the registration process - a few helpful links to get you started getting the most out of your new IntenseDebate comment system.
 
 == Changelog ==
+= 2.8 =
+* Added widgets for recent comments, top commenters, site comment stats, and most commented posts
+
 = 2.7 =
 * Added ability to explicitly log in as a WordPress.com user 
 * Added basic connection diagnostics during installation
