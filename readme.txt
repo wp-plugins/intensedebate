@@ -1,7 +1,7 @@
 === IntenseDebate Comments ===
 Contributors: IntenseDebate, Automattic, beaulebens
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation, wpmu
-Requires at least: 2.5
+Requires at least: 2.8
 Tested up to: 3.0
 Stable tag: 2.8
 
@@ -16,22 +16,17 @@ Full comment and account data sync between Intense Debate and WordPress ensures 
 *Note: As is the case when installing any new plugin, it's always a good idea to backup your blog data before installing.*
 
 1. After downloading the IntenseDebate plugin, unpack and upload the file to the wp-content/plugins folder on your blog. Make sure to leave the directory structure of the archive intact so that all of the IntenseDebate files are located in 'wp-content/plugins/intensedebate/'
-
 2. You will need to activate the IntenseDebate plugin in order to see your new comment system. Go to the Plugins tab and find IntenseDebate Comments in the list and click **Activate**.
-
 3. After activating proceed to the plugin settings page (under Settings > IntenseDebate) to configure your plugin. Don't forget to visit your account at [IntenseDebate.com](http://intensedebate.com) for *additional customization options*.
 
 == Frequently Asked Questions ==
 = Having Connection Issues During Install? =
 In order for our plugin to work properly, our servers need to be able to get in contact with yours. Some common causes for communication errors:
 
-1. You're attempting to install IntenseDebate locally - your site must be live
-
-2. Your site is password protected
-
-3. Your server is behind a firewall
-
-4. You caching plugin might be configured incorrectly
+1. You're attempting to install IntenseDebate on a local development server - your site must be online on the "public" internet
+2. Your site is password protected (.htaccess or similar)
+3. Your server is behind a firewall or 
+4. A caching plugin might be configured incorrectly
 
 For further assistance, please contact IntenseDebate support at support@intensedebate.com
 
@@ -65,6 +60,13 @@ Your comments may take several hours to import. The time of your import is depen
 6. Final step of the registration process - a few helpful links to get you started getting the most out of your new IntenseDebate comment system.
 
 == Changelog ==
+= 2.9 =
+* Now requires WordPress 2.8+
+* Reduced query load
+* Optimize sync queue system for better performance
+* Improve mobile device support
+* Improved compatibility with WP 3.0
+
 = 2.8 =
 * Added widgets for recent comments, top commenters, site comment stats, and most commented posts
 
