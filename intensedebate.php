@@ -94,6 +94,18 @@ Author URI: http://intensedebate.com
 		return get_usermeta( $id, $val );
 	}
 	
+	function id_delete_user_meta( $id, $val ) {
+		if ( function_exists( 'delete_user_meta' ) )
+			return delete_user_meta( $id, $val );
+		return delete_usermeta( $id, $val );
+	}
+	
+	function id_get_author_name() {
+		if ( function_exists( 'get_the_author_meta' ) )
+			return get_the_author_meta( 'display_name' );
+		return get_author_name();
+	}
+	
 // Debug logging
 	function id_debug_log( $text ) {
 		if ( defined( 'ID_DEBUG' ) && true === ID_DEBUG ) {
@@ -247,6 +259,9 @@ Author URI: http://intensedebate.com
 			'id_settings',
 			'id_settings_page'
 		);
+		
+		if ( !get_option( 'id_pdxsync' ) )
+			id_clear_orphan_comments();
 	}
 	
 	function id_whitelist_options( $options ) {
@@ -352,7 +367,7 @@ Author URI: http://intensedebate.com
 		if ( isset( $value ) && !empty( $value ) ) {
 			update_usermeta( $user_id, $name, $value );
 		} else {
-			delete_usermeta( $user_id, $name );
+			id_delete_user_meta( $user_id, $name );
 		}
 	}
 	
@@ -681,7 +696,7 @@ Author URI: http://intensedebate.com
 		// evaluates whether the comment is valid
 		function valid() {
 			$this->duplicateCheck();
-			return ( !empty( $this->comment_content ) && $this->comment_post_ID );
+			return ( !empty( $this->comment_content ) && is_numeric( $this->comment_post_ID ) );
 		}
 		
 		// based on code in wp_allow_comment, updates internal reference so that updates happen on duplicates
@@ -1020,7 +1035,7 @@ Author URI: http://intensedebate.com
 	
 	function id_request_handler() {
 		global $wpmu_version;
-		
+				
 		// Blanket protection against accidental access to edit-comments.php
 		$basename = basename( $_SERVER['REQUEST_URI'] );
 		if ( stristr( $basename, '?' ) )
@@ -1077,7 +1092,7 @@ Author URI: http://intensedebate.com
 	}
 	
 	function id_response_render( $result, $contentType = "application/json" ) {
-		while ( ob_end_clean() ) {} // Clear all buffers
+		while ( @ob_end_clean() ) {} // Clear all buffers
 		$charSet = get_bloginfo( 'charset' );
 		header( "Content-Type: {$contentType}; charset={$charSet}" );
 		die( json_encode( $result ) );
@@ -2458,7 +2473,7 @@ Author URI: http://intensedebate.com
 		$meta = array( 'id_username', 'id_userID', 'id_userKey' );
 		foreach ( $users as $user ) {
 			foreach ( $meta as $key ) {
-				delete_usermeta( $user->user_id, $key );
+				id_delete_user_meta( $user->user_id, $key );
 			}
 		}
 
@@ -2624,12 +2639,16 @@ Author URI: http://intensedebate.com
 		$userKey = id_get_user_meta( $wp_userID, 'id_userKey' );
 		
 		$curSysTime = gmdate( "U" );
+		
+		$iframe_url = ID_COMMENT_MODERATION_PAGE;
+		if ( is_ssl() )
+			$iframe_url = str_replace( 'http://', 'https://secure.', $iframe_url );
 		?>
 		
 			<div class="wrap">
 				<?php if ( function_exists( 'screen_icon' ) ) screen_icon( 'edit-comments' ); ?>
 				<h2><?php _e( 'Edit Comments', 'intensedebate' ); ?></h2>
-				<iframe frameborder="0" id="id_iframe_moderation" src="<?php echo ID_COMMENT_MODERATION_PAGE . get_option( 'id_blogID' ) . "&userid=$userID&time=$curSysTime&authstr=" . md5( $userKey . $curSysTime ); ?>" style="width: 100%; height: 500px; border: none;" onload="addScript()" scrolling="auto"></iframe>
+				<iframe frameborder="0" id="id_iframe_moderation" src="<?php echo $iframe_url . get_option( 'id_blogID' ) . "&userid=$userID&time=$curSysTime&authstr=" . md5( $userKey . $curSysTime ); ?>" style="width: 100%; height: 500px; border: none;" onload="addScript()" scrolling="auto"></iframe>
 			</div>
 		
 		<script type="text/javascript">		
@@ -2666,14 +2685,14 @@ Author URI: http://intensedebate.com
 		global $post;		
 		
 		if ( get_option( "id_jsCommentLinks" ) == 0 ) {
-			$id = $post->ID;
+			$id         = $post->ID;
 			$posttitle  = urlencode( $post->post_title );
 			$posttime   = urlencode( $post->post_date_gmt );
-			$postauthor = urlencode( get_author_name( $post->post_author ) );
-			$permalink  = get_permalink( $id );
-			$permalinkEncoded = urlencode( $permalink );
+			$postauthor = urlencode( id_get_author_name() );
+			$permalink  = urlencode( get_permalink( $post->ID ) );
+			$guid       = urlencode( $post->guid );
 			
-			return "<span class='IDCommentsReplace' style='display:none'>$id</span>$comment_text<span style='display:none' id='IDCommentPostInfoPermalink$id'>$permalink</span><span style='display:none' id='IDCommentPostInfoTitle$id'>$posttitle</span><span style='display:none' id='IDCommentPostInfoTime$id'>$posttime</span><span style='display:none' id='IDCommentPostInfoAuthor$id'>$postauthor</span>";
+			return "<span class='IDCommentsReplace' style='display:none'>$id</span>$comment_text<span style='display:none' id='IDCommentPostInfoPermalink$id'>$permalink</span><span style='display:none' id='IDCommentPostInfoTitle$id'>$posttitle</span><span style='display:none' id='IDCommentPostInfoTime$id'>$posttime</span><span style='display:none' id='IDCommentPostInfoAuthor$id'>$postauthor</span><span style='display:none' id='IDCommentPostInfoGuid$id'>$guid</span>";
 		} else {
 			return $comment_text;
 		}
@@ -2705,6 +2724,35 @@ Author URI: http://intensedebate.com
 			if ( get_option( "id_blogAcct" ) )
 				id_postload_js( ID_BASEURL . '/js/wordpressTemplateLinkWrapper2.php?acct=' . get_option( "id_blogAcct" ) );
 		}
+	}
+	
+	function id_clear_orphan_comments() {
+		global $wpdb;
+		
+		remove_action( 'trashed_comment', 'id_comment_trashed', 10 );
+		remove_action( 'wp_set_comment_status', 'id_comment_status', 10, 2 );
+		
+		// Get comments with post=0
+		$offset = 0;
+		// Using direct queries because get_comments() doesn't give access to post_ID=0, or date ranges
+		while ( $comments = $wpdb->get_col( $wpdb->prepare( "SELECT `comment_ID` FROM {$wpdb->comments} WHERE `comment_post_ID` = 0 AND `comment_date_gmt` BETWEEN '2010-07-20 00:00:00' AND '2010-07-25 00:00:00' LIMIT $offset, 50" ) ) ) {
+			foreach ( $comments as $comment ) {
+				// Check date
+				wp_delete_comment( $comment, true );
+			}
+			$offset += 50;
+		}
+		
+		// Ping ID for a resync
+		$fields = array( 'sync_type' => 'PDX' );
+		$queue = id_get_queue();
+		$op = $queue->add( 'request_resync', $fields, 'id_generic_callback' );
+		$queue->ping( array( $op ) );
+		
+		add_option( 'id_pdxsync', time() );
+		
+		add_action( 'trashed_comment', 'id_comment_trashed', 10 );
+		add_action( 'wp_set_comment_status', 'id_comment_status', 10, 2 );
 	}
 	
 	// Add ID blog stats widget

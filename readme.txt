@@ -61,9 +61,10 @@ Your comments may take several hours to import. The time of your import is depen
 
 == Changelog ==
 = 2.9 =
-* Now requires WordPress 2.8+
+* Now *requires* WordPress 2.8+
 * Reduced query load
 * Optimize sync queue system for better performance
+* Improved option handling
 * Improve mobile device support
 * Improved compatibility with WP 3.0
 
