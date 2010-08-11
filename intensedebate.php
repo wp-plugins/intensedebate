@@ -964,6 +964,9 @@ Author URI: http://intensedebate.com
 			);
 			$this->store();
 			
+			if ( !count( $send ) )
+				return false;
+			
 			return id_http_query( $this->url . '?blogid=' . urlencode( get_option( 'id_blogID' ) ), $fields, 'POST' );
 		}
 
