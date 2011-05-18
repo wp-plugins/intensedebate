@@ -1153,7 +1153,7 @@ Author URI: http://intensedebate.com
 		
 		id_debug_log( "Initiating import response with current = $current" );
 		
-		$sql = "SELECT * FROM {$wpdb->comments} WHERE$post_where comment_ID >= " . (int) $current . " AND comment_approved != 'spam' ORDER BY comment_ID ASC LIMIT 100";
+		$sql = "SELECT * FROM {$wpdb->comments} WHERE$post_where comment_ID >= " . (int) $current . " AND comment_approved = '1' ORDER BY comment_ID ASC LIMIT 100";
 		id_debug_log( $sql );
 		$results = $wpdb->get_results( $sql );
 		if ( !count( $results ) ) {
