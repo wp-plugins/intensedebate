@@ -464,7 +464,7 @@ Author URI: http://intensedebate.com
 			
 		$comment = new id_comment( array( 'comment_ID' => $comment_ID ) );
 		$comment->loadFromWP();
-		f ( ! in_array( $comment->comment_approved, apply_filters( 'id_comment_approved_blacklist', array( 'spam' ) ) ) ) {
+		if ( ! in_array( $comment->comment_approved, apply_filters( 'id_comment_approved_blacklist', array( 'spam' ) ) ) ) {
 			// Don't send the spam
 			$queue = id_get_queue();
 			$queue->add( 'save_comment', $comment->export(), 'id_generic_callback' );
