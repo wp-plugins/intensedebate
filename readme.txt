@@ -60,6 +60,10 @@ Your comments may take several hours to import. The time of your import is depen
 6. Final step of the registration process - a few helpful links to get you started getting the most out of your new IntenseDebate comment system.
 
 == Changelog ==
+= 2.9.2 =
+* Remove unnecessary reference to wp-admin/includes/template.php
+* Import all comments not marked as spam (handles custom statuses etc)
+
 = 2.9.1 =
 * Remove user account linking/auto-login
 * Fix bug with jQuery selectors for jQ 1.5.2 compatibility

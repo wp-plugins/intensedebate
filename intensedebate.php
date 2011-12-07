@@ -3,7 +3,7 @@
 Plugin Name: IntenseDebate
 Plugin URI: http://intensedebate.com/wordpress
 Description: <a href="http://www.intensedebate.com">IntenseDebate Comments</a> enhance and encourage conversation on your blog or website.  Full comment and account data sync between IntenseDebate and WordPress ensures that you will always have your comments.  Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you!  To get started, please activate the plugin and adjust your  <a href="./options-general.php?page=id_settings">IntenseDebate settings</a> .
-Version: 2.9
+Version: 2.9.2
 Author: IntenseDebate & Automattic
 Author URI: http://intensedebate.com
 */
@@ -11,7 +11,7 @@ Author URI: http://intensedebate.com
 // CONSTANTS
 	
 	// This plugin's version 
-	define( 'ID_PLUGIN_VERSION', '2.9' );
+	define( 'ID_PLUGIN_VERSION', '2.9.2' );
 	
 	// API Endpoints
 	define( 'ID_BASEURL', 'http://intensedebate.com' );
@@ -1153,7 +1153,7 @@ Author URI: http://intensedebate.com
 		
 		id_debug_log( "Initiating import response with current = $current" );
 		
-		$sql = "SELECT * FROM {$wpdb->comments} WHERE$post_where comment_ID >= " . (int) $current . " AND comment_approved = '1' OR comment_approved = '0' ORDER BY comment_ID ASC LIMIT 100";
+		$sql = "SELECT * FROM {$wpdb->comments} WHERE$post_where comment_ID >= " . (int) $current . " AND comment_approved != 'spam' ORDER BY comment_ID ASC LIMIT 100";
 		id_debug_log( $sql );
 		$results = $wpdb->get_results( $sql );
 		if ( !count( $results ) ) {
@@ -1426,7 +1426,6 @@ Author URI: http://intensedebate.com
 //			optionally provide &post_id= to get count for a specific post only
 	
 	function id_REST_get_approved_comment_count() {
-		include_once ABSPATH . '/wp-admin/includes/template.php';
 		if ( $p = id_param( 'post_id', 0 ) )
 			$result = wp_count_comments( $p );
 		else
