@@ -3,7 +3,7 @@ Contributors: IntenseDebate, automattic, beaulebens
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation, wpmu
 Requires at least: 3.0
 Tested up to: 3.3
-Stable tag: 2.9.2
+Stable tag: 2.9.3
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
 
@@ -57,6 +57,7 @@ Your comments may take several hours to import. The time of your import is depen
 * Get rid of our JSON library
 * Remove Facebook xd receiver file
 * Remove no-longer-used reference to Facebook cross-domain receiver
+* Update .pot file
 
 = 2.9.2 =
 * Remove unnecessary reference to wp-admin/includes/template.php
