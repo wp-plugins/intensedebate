@@ -57,6 +57,7 @@ Your comments may take several hours to import. The time of your import is depen
 * Get rid of our JSON library
 * Remove Facebook xd receiver file
 * Remove no-longer-used reference to Facebook cross-domain receiver
+* Update .pot file
 
 = 2.9.2 =
 * Remove unnecessary reference to wp-admin/includes/template.php
