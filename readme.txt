@@ -2,8 +2,8 @@
 Contributors: IntenseDebate, automattic, beaulebens
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation, wpmu
 Requires at least: 3.0
-Tested up to: 3.3
-Stable tag: 2.9.3
+Tested up to: 3.3.1
+Stable tag: 2.9.4
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
 
@@ -51,6 +51,11 @@ Your comments may take several hours to import. The time of your import is depen
 6. Final step of the registration process - a few helpful links to get you started getting the most out of your new IntenseDebate comment system.
 
 == Changelog ==
+= 2.9.4 =
+* Remove some old compatibility code
+* Performance optimizations
+* Better support for loading via HTTPS
+
 = 2.9.3 =
 * Remove mentions of $wpmu which is deprecated
 * Bump requirement to WP3.0

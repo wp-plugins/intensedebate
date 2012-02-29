@@ -11,10 +11,10 @@ Author URI: http://intensedebate.com
 // CONSTANTS
 	
 	// This plugin's version 
-	define( 'ID_PLUGIN_VERSION', '2.9.3' );
+	define( 'ID_PLUGIN_VERSION', '2.9.4' );
 	
 	// API Endpoints
-	define( 'ID_BASEURL', 'http://intensedebate.com' );
+	define( 'ID_BASEURL', ( is_ssl() ? 'https' : 'http' ) . '://intensedebate.com' );
 	define( 'ID_SERVICE', ID_BASEURL . '/services/v1/operations/postOperations.php' );
 	define( 'ID_USER_LOOKUP_SERVICE', ID_BASEURL . '/services/v1/users' );
 	define( 'ID_BLOG_LOOKUP_SERVICE', ID_BASEURL . '/services/v1/sites' );
@@ -187,26 +187,15 @@ Author URI: http://intensedebate.com
 		if ( id_is_active() && 0 == get_option( 'id_moderationPage' ) ) {
 			global $menu;
 			
-			if ( function_exists( 'add_object_page' ) ) { // WP 2.7+
-				unset( $menu[25] );
-				add_object_page(
-					__( 'Comments', 'intensedebate' ),
-					__( 'Comments', 'intensedebate' ),
-					'moderate_comments',
-					'intensedebate',
-					'id_moderate_comments',
-					WP_CONTENT_URL . '/plugins/intensedebate/comments.png'
-				);
-			} else { // < WP 2.7
-				unset( $menu[20] );
-				add_menu_page(
-					__( 'Comments', 'intensedebate' ),
-					__( 'Comments', 'intensedebate' ),
-					'moderate_comments',
-					'intensedebate',
-					'id_moderate_comments'
-				);
-			}
+			unset( $menu[25] );
+			add_object_page(
+				__( 'Comments', 'intensedebate' ),
+				__( 'Comments', 'intensedebate' ),
+				'moderate_comments',
+				'intensedebate',
+				'id_moderate_comments',
+				WP_CONTENT_URL . '/plugins/intensedebate/comments.png'
+			);
 		}
 		add_options_page(
 			__( 'IntenseDebate Settings', 'intensedebate' ), 
@@ -375,8 +364,8 @@ Author URI: http://intensedebate.com
 	function id_queue_not_empty() {
 		$queue = id_get_queue();
 		$queue->load();
-		if ( count( $queue->operations ) ) {
-			return true;
+		if ( $count = count( $queue->operations ) ) {
+			return $count;
 		}
 		else {
 			return false;
@@ -434,12 +423,22 @@ Author URI: http://intensedebate.com
 		} else {
 			$comment = new id_comment( array( 'comment_ID' => $comment_id ) );
 			$comment->loadFromWP();
-			if ( $status == "hold" )
+			switch ( (string) $status ) {
+			case '0' :
+			case 'hold' :
 				$comment->comment_approved = 0;
-			if ( $status == "approve" )
+				break;
+			case 'approve' :
+			case '1' :
 				$comment->comment_approved = 1;
-			if ( $status == "spam" )
+				break;
+			case 'spam' :
 				$comment->comment_approved = "spam";
+				break;
+			default :
+				return;
+			}
+
 			$queue = id_get_queue();
 			$queue->add( 'save_comment', $comment->export(), 'id_generic_callback' );
 		}
@@ -466,6 +465,18 @@ Author URI: http://intensedebate.com
 	}
 
 	function id_delete_post( $post_id ) {
+		// Core calls delete_post action twice per post.
+		static $post_ids = array();
+		if ( isset( $post_ids[$post_id] ) ) {
+			return;
+		}
+		$post_ids[$post_id] = true;
+
+		// Core calls delete_post for revisions too.
+		if ( wp_is_post_revision( $post_id ) ) {
+			return;
+		}
+
 		$packet = new stdClass;
 		$packet->post_id = $post_id;
 		$queue = id_get_queue();
