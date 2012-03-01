@@ -1,6 +1,6 @@
 === IntenseDebate Comments ===
 Contributors: IntenseDebate, automattic, beaulebens
-Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation, wpmu
+Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation
 Requires at least: 3.0
 Tested up to: 3.3.1
 Stable tag: 2.9.4
