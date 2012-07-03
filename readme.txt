@@ -2,8 +2,8 @@
 Contributors: IntenseDebate, automattic, beaulebens
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation
 Requires at least: 3.0
-Tested up to: 3.3.2
-Stable tag: 2.9.4
+Tested up to: 3.4.1
+Stable tag: 2.9.5
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
 
@@ -51,6 +51,9 @@ Your comments may take several hours to import. The time of your import is depen
 6. Final step of the registration process - a few helpful links to get you started getting the most out of your new IntenseDebate comment system.
 
 == Changelog ==
+= 2.9.5 =
+* Wrap JS output in an anonymous function to avoid variable conflicts
+
 = 2.9.4 =
 * Remove some old compatibility code
 * Performance optimizations

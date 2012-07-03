@@ -3,7 +3,7 @@
 Plugin Name: IntenseDebate
 Plugin URI: http://intensedebate.com/wordpress
 Description: <a href="http://www.intensedebate.com">IntenseDebate Comments</a> enhance and encourage conversation on your blog or website.  Full comment and account data sync between IntenseDebate and WordPress ensures that you will always have your comments.  Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you!  To get started, please activate the plugin and adjust your  <a href="./options-general.php?page=id_settings">IntenseDebate settings</a> .
-Version: 2.9.4
+Version: 2.9.5
 Author: IntenseDebate & Automattic
 Author URI: http://intensedebate.com
 */
@@ -2455,7 +2455,9 @@ Author URI: http://intensedebate.com
 		?>
 		<script type="text/javascript">
 		/* <![CDATA[ */
+		(function() {
 		var s = document.createElement("script"); s.type = "text/javascript";<?php echo $id ? " s.id = '" . addslashes( $id ) . "';" : ''; ?> s.src = "<?php echo addslashes( $url ); ?>"; document.getElementsByTagName("head")[0].appendChild(s);
+		}());
 		/* ]]> */
 		</script>
 <?php
