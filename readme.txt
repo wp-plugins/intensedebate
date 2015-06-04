@@ -2,8 +2,8 @@
 Contributors: IntenseDebate, automattic, beaulebens
 Tags: widget, profile, community, avatars, spam, notification, email, threaded, comments, intense debate, intensedebate, intense, debate, comment system, moderation
 Requires at least: 3.0
-Tested up to: 4.0
-Stable tag: 2.9.5
+Tested up to: 4.2.2
+Stable tag: 2.9.6
 
 IntenseDebate comments enhance and encourage conversation on your blog.  Build your reader community, increase your comments, & boost pageviews.
 
@@ -11,6 +11,8 @@ IntenseDebate comments enhance and encourage conversation on your blog.  Build y
 IntenseDebate Comments enhance and encourage conversation on your blog or website. Custom integration with your WordPress admin panel makes moderation a piece of cake. Comment threading, reply-by-email, user accounts and reputations, comment voting, along with Twitter and friendfeed integrations enrich your readers' experience and make more of the internet aware of your blog and comments which drives traffic to you!
 
 Full comment and account data sync between Intense Debate and WordPress ensures that you will always have your comments stored locally on your own server.
+
+**Note: IntenseDebate is currently being maintained, but not actively developed.**
 
 == Installation ==
 *Note: As is the case when installing any new plugin, it's always a good idea to backup your blog data before installing.*
@@ -51,6 +53,10 @@ Your comments may take several hours to import. The time of your import is depen
 6. Final step of the registration process - a few helpful links to get you started getting the most out of your new IntenseDebate comment system.
 
 == Changelog ==
+= 2.9.6 =
+* Clean up warnings in WP_DEBUG mode
+* Minor cosmetic tweaks to better align with modern wp-admin
+
 = 2.9.5 =
 * Wrap JS output in an anonymous function to avoid variable conflicts
 
